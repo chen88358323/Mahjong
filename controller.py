@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 import pygame
 import resource
 import graphics
@@ -10,6 +11,7 @@ from clib import TILE_TYPE
 
 class Controller():
     def __init__(self, src_dir):
+        print ("cc")
         resource_mgr = resource.Resource()
         resource_mgr.load(src_dir)
         self._graphic_mgr = graphics.Graphics(resource_mgr)
