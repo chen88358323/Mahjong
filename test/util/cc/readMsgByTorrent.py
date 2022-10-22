@@ -2,6 +2,21 @@ from torrentool.api import Torrent
 import os
 
 
+def removeFiles():
+    filepath = 'D:\\temp\\593254315050521\\demo\\'
+    array=['【01axg.xyz】.jpg','02AXG.XYZ.png','03axg.XYZ.png','04axg.xyz.png','05axg.xyz.png']
+    prefix='(1).jpg'
+    for dirpath, dirnames, filenames in os.walk(filepath):
+        for filename in filenames:
+            if filename in array:
+                absPath = dirpath +"\\"+ filename
+                print(absPath)
+                os.remove(absPath)
+            # torr = os.path.join(dirpath, filename)
+            # absPath = dirpath + filename
+            # if(absPath.endswith(prefix)):
+            #     print(absPath)
+
 def getDulicateFiles():
     filepath = 'D:\\temp\\593254315050521\\'
     prefix='(1).jpg'
@@ -13,8 +28,9 @@ def getDulicateFiles():
                 print(absPath)
 
 
-def getTorrDetail():
-    filepath = 'D:\\temp\\593254315050521\\'
+def getTorrDetail(filepath):
+
+    print('path===>'+filepath)
     len=1024*1024
     for dirpath, dirnames, filenames in os.walk(filepath):
         for filename in filenames:
@@ -27,11 +43,11 @@ def getTorrDetail():
                 newnamee=portion[0].replace('.bt','')
                 os.renames(filepath+portion[0]+portion[1],filepath+newnamee)
             if portion[1] == ".torrent":
-                # print(torr)
+                print(torr)
                 my_torrent = Torrent.from_file(torr)
                 print(my_torrent.total_size / len)
                 # print(my_torrent.comment)
-                print(portion[0]  +'   '+ my_torrent.name)
+                print(portion[0]  +'          '+ my_torrent.name)
                 for torrfile in my_torrent.files:
                     if(torrfile.length>100*len):
                         print(torrfile)
@@ -39,7 +55,11 @@ def getTorrDetail():
 
 if __name__ == '__main__':
     # getDulicateFiles()
-    getTorrDetail()
+    #getTorrDetail('D:\\temp\\best\\')
+    # getTorrDetail('D:\\temp\\1011\\')
+    getTorrDetail('D:\\temp\\593254315050521\\16\\')
+
+    # removeFiles()
 
 
 

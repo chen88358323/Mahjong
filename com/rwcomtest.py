@@ -1,8 +1,10 @@
 from time import sleep
 
 import serial  # 导入串口通信库
+
 # https://www.cnblogs.com/L707/p/16364448.html
 ser = serial.Serial()
+import hexUtil
 
 
 def port_open_recv():  # 对串口的参数进行配置
@@ -46,7 +48,9 @@ def send(send_data):
         rslen = ser.inWaiting()
         if rslen != 0:
             response = ser.read(rslen);
-            print('返回结果:'+response)
+            print('返回结果:' + response)
+            hexUtil.valArray(response)  # 解析为10进制并输出
+
     else:
 
         print("发送失败！")
@@ -57,11 +61,16 @@ if __name__ == '__main__':
     port_open_recv()
     # try:
     while True:
-        a = input("输入要发送的数据：")
+    #    a = input("输入要发送的数据：")
 
-        send(a)
+        send("01 03 00 00 00 02 C4 0B")  # 测试
 
-        sleep(0.5)  # 起到一个延时的效果，这里如果不加上一个while True，程序执行一次就自动跳出了
+        send("01 03 00 00 00 01 84 0A ")  # 文档通讯
+
+        sleep(5)
+
+    #    ser.flush()
+    #    sleep(0.5)  # 起到一个延时的效果，这里如果不加上一个while True，程序执行一次就自动跳出了
     # except KeyboardInterrupt:
     #     print("Exiting Program")
     #
