@@ -27,6 +27,43 @@ def getDulicateFiles():
             if(absPath.endswith(prefix)):
                 print(absPath)
 
+def getTorrentByDetails(str,filepath):
+    dirs = []
+    # try:
+    for i in os.listdir(filepath):
+        path = filepath + r'\\' + i
+        if os.path.isdir(path):
+            if ((path in dirs) == False and path.endswith('y')):
+                # print('add ' + path)
+                dirs.append(dirs)
+            # print('path==='+path)
+            getTorrentByDetails(str, path)
+        elif os.path.isfile(path) and path.find(".torrent"):
+            my_torrent = Torrent.from_file(path)
+            for torrfile in my_torrent.files:
+                # print('name:'+torrfile.name)
+                if (str in torrfile.name):
+                    dirs.append(path)
+                    # print(my_torrent.total_size / len)
+                    print('t:==>' + path)
+                    print(my_torrent.files)
+                    break
+# finally:
+# print('dirs',dirs)
+
+def editXunleiFile(filepath):
+    #filepath = 'D:\\temp\\593254315050521\\demo\\'
+    for dirpath, dirnames, filenames in os.walk(filepath):
+        for filename in filenames:
+            if filename.endswith('.bt.xltd'):
+                print('dirpath:'+dirpath)
+                new = filename.replace(".bt.xltd", "")
+                oldfile=filepath + os.sep + filename
+                newfile=filepath + os.sep + new
+                print("修改前:" + oldfile)
+                print("修改后:" + newfile)
+                os.renames(oldfile, newfile)
+
 
 def getTorrDetail(filepath):
 
@@ -36,6 +73,7 @@ def getTorrDetail(filepath):
         for filename in filenames:
             torr = os.path.join(dirpath, filename)
             portion = os.path.splitext(filename)
+            print("=================================")
             print(portion)
             # 如果后缀是.xltd
             if portion[1] == ".xltd":
@@ -55,15 +93,20 @@ def getTorrDetail(filepath):
 
 if __name__ == '__main__':
     # getDulicateFiles()
-    #getTorrDetail('D:\\temp\\best\\')
-    # getTorrDetail('D:\\temp\\1011\\')
-    getTorrDetail('D:\\temp\\593254315050521\\16\\')
+    # getTorrDetail('D:\\temp\\593254315050521\\1024\\')
+    # getTorrDetail('D:\\temp\\best2\\best4\\')
+    getTorrDetail('D:\\360Downloads\\1226\\1226best\\1\\')
+    # getTorrDetail('D:\\temp\\593254315050521\\1210-best\\1\\')
 
-    # removeFiles()
+    #getTorrentByDetails('给哥哥买了新工具','D:\\temp\\593254315050521\\alltorr')
 
+    # for i in range(51):
+    #     dirpath='D:\\temp\\593254315050521\\alltorr\\'+str(i)+'\\'+str(i)+'\\y'
+    #     if(os.path.isdir(dirpath)):
+    #         # print('D is '+dirpath)
+    #         getTorrentByDetails('给哥哥买了新工具',dirpath )
 
-
-    # # Reading and modifying an existing file.
+# # Reading and modifying an existing file.
     # my_torrent = Torrent.from_file('/home/idle/some.torrent')
     # my_torrent.total_size  # Total files size in bytes.
     # my_torrent.magnet_link  # Magnet link for you.
