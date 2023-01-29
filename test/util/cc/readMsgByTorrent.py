@@ -36,7 +36,7 @@ def getTorrentByDetails(str,filepath):
             if ((path in dirs) == False and path.endswith('y')):
                 # print('add ' + path)
                 dirs.append(dirs)
-            # print('path==='+path)
+            print('path*****'+i+'   '+path)
             getTorrentByDetails(str, path)
         elif os.path.isfile(path) and path.find(".torrent"):
             my_torrent = Torrent.from_file(path)
@@ -64,41 +64,101 @@ def editXunleiFile(filepath):
                 print("修改后:" + newfile)
                 os.renames(oldfile, newfile)
 
+def writeTorrDetail(filepath):
+    for i in os.listdir(filepath):
+        path = filepath +  i+r'\\'
+        if os.path.isdir(path):
+            print("writeTorrDetail path====="+path)
+            getTorrDetail(path)
+
+# torrpath 种子路径
+# filepath 下载文件路径
+def filterDownFiles(torrpath,filepath):
+    # for dirpath, dirnames, filenames in os.walk(filepath):
+    #     for dirname in dirnames:
+    #         print('dir:   ' +dirname)
+    dirList=[]
+    for filename in os.listdir(filepath):
+        if os.path.isdir(os.path.join(filepath, filename)):
+            dirList.append(filename)
+            print('dirname   '+filename)
+    torrlist=[]
+    torrNamelist = []
+    for dirpath, dirnames, filenames in os.walk(torrpath):
+        for filename in filenames:
+            portion = os.path.splitext(filename)
+            if portion[1] == ".torrent":
+                torr = os.path.join(dirpath, filename)
+                print('torr=='+torr)
+                my_torrent = Torrent.from_file(torr)
+                torrlist.append(my_torrent.name)
+                torrNamelist.append(torr)
+    torrDict=dict(zip(torrlist,torrNamelist))
+    print('dict===='+str(torrDict))
+    reset=set(dirList)&set(torrlist)
+    print('dirList'+str(dirList))
+    print('torrlist' + str(torrlist))
+    rslist=list(reset)
+    print("  =====================  ")
+    print(rslist)
+    for samefile in rslist:
+        print(" ****   ")
+        print(torrDict[samefile])
+        print(os.path.basename(torrDict[samefile]))
 
 def getTorrDetail(filepath):
+    dirname = os.path.dirname(filepath)
+    #文件夹最后一层名称
+    basename = os.path.split(dirname)[-1]
+    txtpath=filepath+basename+'.txt'
+    print( 'basename==>'+basename)
+    print('dirname==>'+dirname)
+    print('txtfile===>'+txtpath)
 
-    print('path===>'+filepath)
+    txtfile=open(txtpath,'w+',encoding='utf-8')
+
     len=1024*1024
     for dirpath, dirnames, filenames in os.walk(filepath):
         for filename in filenames:
             torr = os.path.join(dirpath, filename)
             portion = os.path.splitext(filename)
-            print("=================================")
-            print(portion)
+            txtfile.writelines("================================="+'\r')
+            txtfile.writelines(portion)
+            # print("=================================")
+            # print(portion)
             # 如果后缀是.xltd
             if portion[1] == ".xltd":
                 print("need change")
                 newnamee=portion[0].replace('.bt','')
                 os.renames(filepath+portion[0]+portion[1],filepath+newnamee)
             if portion[1] == ".torrent":
-                print(torr)
+                # print(torr)
+                txtfile.writelines(torr+'\r')
                 my_torrent = Torrent.from_file(torr)
-                print(my_torrent.total_size / len)
+                tlen=my_torrent.total_size / len
+                txtfile.writelines(str(tlen)+'\r')
+                # print(my_torrent.total_size / len)
                 # print(my_torrent.comment)
                 print(portion[0]  +'          '+ my_torrent.name)
                 for torrfile in my_torrent.files:
                     if(torrfile.length>100*len):
-                        print(torrfile)
+                        txtfile.writelines(str(torrfile)+'\r')
                 # filesor tf in list[my_torrent.files]:
+
+    txtfile.close()
 
 if __name__ == '__main__':
     # getDulicateFiles()
     # getTorrDetail('D:\\temp\\593254315050521\\1024\\')
     # getTorrDetail('D:\\temp\\best2\\best4\\')
-    getTorrDetail('D:\\360Downloads\\1226\\1226best\\1\\')
+    #getTorrDetail('D:\\360Downloads\\1228\\')
+    # writeTorrDetail('D:\\temp\\1228\\')
+    filterDownFiles('D:\\360Downloads\\1228\\8\\','D:\\temp\\1228\\')
+    # writeTorrDetail('D:\\360Downloads\\1228\\')
+
     # getTorrDetail('D:\\temp\\593254315050521\\1210-best\\1\\')
 
-    #getTorrentByDetails('给哥哥买了新工具','D:\\temp\\593254315050521\\alltorr')
+    # getTorrentByDetails('D:\\360Downloads\\1228\\5\\')
 
     # for i in range(51):
     #     dirpath='D:\\temp\\593254315050521\\alltorr\\'+str(i)+'\\'+str(i)+'\\y'

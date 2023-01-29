@@ -58,7 +58,7 @@ if __name__ == '__main__':
     # removeFiles('F:\\迅雷下载\\\2022-03-01\\15\\y\\24\\')
     # removeFiles('G:\\迅雷下载\\2022-03-01\\13\\y\\')
 
-    editXunleiFile('F:\\迅雷下载\\2022-03-01\\best4\un\\y\\v')
+    editXunleiFile('F:\\迅雷下载\\2022-03-01\\best4\\un\\y\\v')
     # removeFiles('O:\\F\\cd1014\\11\\26\\')
     # removeFiles('G:\\迅雷下载\\2022-03-01\\1112\\y\\')
     ###removeFiles('F:\\迅雷下载\\2022-03-01\\1112\\y\\')
