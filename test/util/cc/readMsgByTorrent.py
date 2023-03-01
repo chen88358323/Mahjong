@@ -64,12 +64,31 @@ def editXunleiFile(filepath):
                 print("修改后:" + newfile)
                 os.renames(oldfile, newfile)
 
+'''
+批量写子文件内容
+'''
 def writeTorrDetail(filepath):
     for i in os.listdir(filepath):
         path = filepath +  i+r'\\'
         if os.path.isdir(path):
             print("writeTorrDetail path====="+path)
             getTorrDetail(path)
+
+#过滤大文件
+def filterBigfiles(torrpath,filterLen):
+    bigfiles = []
+    for dirpath, dirnames, filenames in os.walk(torrpath):
+        for filename in filenames:
+            portion = os.path.splitext(filename)
+            if portion[1] == ".torrent":
+                torr = os.path.join(dirpath, filename)
+                print('torr==' + torr)
+                my_torrent = Torrent.from_file(torr)
+                fileSize=my_torrent.total_size/1024/1024
+                print('size==' + str(fileSize))
+
+                bigfiles.append(my_torrent.name)
+    print('bigfiles:'+str(bigfiles))
 
 # torrpath 种子路径
 # filepath 下载文件路径
@@ -153,6 +172,7 @@ if __name__ == '__main__':
     # getTorrDetail('D:\\temp\\best2\\best4\\')
     #getTorrDetail('D:\\360Downloads\\1228\\')
     # writeTorrDetail('D:\\temp\\1228\\')
+    filterBigfiles('D:\\360Downloads\\test\\', 1000)
     filterDownFiles('D:\\360Downloads\\1228\\8\\','D:\\temp\\1228\\')
     # writeTorrDetail('D:\\360Downloads\\1228\\')
 
