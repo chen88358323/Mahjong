@@ -1,6 +1,7 @@
 from torrentool.api import Torrent
 import os
-
+import platform
+import  shutil
 
 def removeFiles():
     filepath = 'D:\\temp\\593254315050521\\demo\\'
@@ -75,7 +76,13 @@ def writeTorrDetail(filepath):
             getTorrDetail(path)
 
 #过滤大文件
+#filterLen 过滤文件大小单位G
 def filterBigfiles(torrpath,filterLen):
+    torrBigFilePath = torrpath + 'big\\'
+    if (not os.path.exists(torrBigFilePath)):
+        print('torrBigFilePath:' + torrBigFilePath)
+        os.mkdir(torrBigFilePath)
+
     bigfiles = []
     for dirpath, dirnames, filenames in os.walk(torrpath):
         for filename in filenames:
@@ -86,6 +93,9 @@ def filterBigfiles(torrpath,filterLen):
                 my_torrent = Torrent.from_file(torr)
                 fileSize=my_torrent.total_size/1024/1024
                 print('size==' + str(fileSize))
+                if(fileSize > filterLen):
+                    shutil.move(torr,torrBigFilePath+filename)
+                    print('大文件')
 
                 bigfiles.append(my_torrent.name)
     print('bigfiles:'+str(bigfiles))
@@ -97,10 +107,19 @@ def filterDownFiles(torrpath,filepath):
     #     for dirname in dirnames:
     #         print('dir:   ' +dirname)
     dirList=[]
+    #搜集已下载文件列表
     for filename in os.listdir(filepath):
+
         if os.path.isdir(os.path.join(filepath, filename)):
             dirList.append(filename)
             print('dirname   '+filename)
+        # else:
+        #     portion = os.path.splitext(filename)
+        #     print('00000  ' + portion[0])
+        #     dirList.append(portion[0])
+
+    # clearMacConfigFile(dirList)
+
     torrlist=[]
     torrNamelist = []
     for dirpath, dirnames, filenames in os.walk(torrpath):
@@ -108,22 +127,46 @@ def filterDownFiles(torrpath,filepath):
             portion = os.path.splitext(filename)
             if portion[1] == ".torrent":
                 torr = os.path.join(dirpath, filename)
-                print('torr=='+torr)
+                # print('torr=='+torr)
                 my_torrent = Torrent.from_file(torr)
                 torrlist.append(my_torrent.name)
                 torrNamelist.append(torr)
     torrDict=dict(zip(torrlist,torrNamelist))
-    print('dict===='+str(torrDict))
+    #print('dict===='+str(torrDict))
     reset=set(dirList)&set(torrlist)
-    print('dirList'+str(dirList))
-    print('torrlist' + str(torrlist))
+    #print('dirList'+str(dirList))
+    #print('torrlist' + str(torrlist))
     rslist=list(reset)
     print("  =====================  ")
     print(rslist)
+
+    torrDonePath=torrpath+'y\\'
+    if(not os.path.exists(torrDonePath)):
+        print('torrdonepath'+torrDonePath)
+        os.mkdir(torrDonePath)
+
+    finishFilePath=filepath+'y\\'
+    if (not os.path.exists(finishFilePath)):
+        print('finishFilePath' + finishFilePath)
+        os.mkdir(finishFilePath)
+
     for samefile in rslist:
         print(" ****   ")
         print(torrDict[samefile])
         print(os.path.basename(torrDict[samefile]))
+        newTorrFile=torrDonePath+os.path.basename(torrDict[samefile])
+
+        finishFile=finishFilePath+samefile
+        print('finishFile:'+finishFile)
+
+        #移动种子
+        if os.path.isfile(newTorrFile):
+            os.remove(newTorrFile)
+        shutil.move(torrDict[samefile],newTorrFile)
+        #移动完成文件
+        shutil.move(filepath+samefile,finishFile)
+
+    print('移动种子文件：'+str(len(rslist)))
 
 def getTorrDetail(filepath):
     dirname = os.path.dirname(filepath)
@@ -173,7 +216,7 @@ if __name__ == '__main__':
     #getTorrDetail('D:\\360Downloads\\1228\\')
     # writeTorrDetail('D:\\temp\\1228\\')
     filterBigfiles('D:\\360Downloads\\test\\', 1000)
-    filterDownFiles('D:\\360Downloads\\1228\\8\\','D:\\temp\\1228\\')
+    # filterDownFiles('D:\\360Downloads\\1228\\8\\','D:\\temp\\1228\\')
     # writeTorrDetail('D:\\360Downloads\\1228\\')
 
     # getTorrDetail('D:\\temp\\593254315050521\\1210-best\\1\\')
