@@ -10,7 +10,7 @@ def record_by_minute(m=1):
     # pin = 4 #GPIO4
     
     con = pymysql.connect(
-        host = 'localhost',
+        host='localhost',
         port = 3306,
         user = 'root',
         password = '111111',

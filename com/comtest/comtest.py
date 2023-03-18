@@ -90,3 +90,4 @@ if __name__ == '__main__':
     test = CSerial("COM3",4800,0.5)
     test.Serial_Create()
     print(test.Serial_WriteAndReadString("hello, I am a serial port!\r\n"))
+    test.Serial_Close()

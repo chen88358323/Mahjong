@@ -161,8 +161,9 @@ def filterDownFiles(torrpath,filepath):
 
         #移动种子
         if os.path.isfile(newTorrFile):
-            os.remove(newTorrFile)
-        shutil.move(torrDict[samefile],newTorrFile)
+            os.remove(torrDict[samefile])
+        else:
+            shutil.move(torrDict[samefile],newTorrFile)
         #移动完成文件
         shutil.move(filepath+samefile,finishFile)
 
