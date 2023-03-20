@@ -42,7 +42,6 @@ def read_data():
                 # if int(str_return_data[6:10], 16) > 50000:
                 #     print("当前CO浓度过高！")
                 #     temp_GS = 0
-        print("port open failed")
         return  winspeed
 if __name__ == "__main__":
     while(True):
