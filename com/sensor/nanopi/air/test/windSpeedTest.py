@@ -4,26 +4,26 @@ import time
 speed = "01 03 00 00 00 01 84 0A"           # speed
 # ser.port = "/dev/ttyUSB0"
 # "COM5"
-serial_dev = "/dev/ttyUSB0"
-def connectrs485():
+
+def connectrs485(serial_dev):
     return serial.Serial(serial_dev,
                          baudrate=4800,
                          bytesize=serial.EIGHTBITS,
                          parity=serial.PARITY_NONE,
                          stopbits=serial.STOPBITS_ONE,
                          timeout=1.0)
-def read_data():
+def read_data(serial_dev):
     winspeed=0
 
     try:
-        ser = connectrs485()
+        ser = connectrs485(serial_dev)
         ser.is_open
     except Exception as ex:
-        msg = "风速仪端口打开失败"+str(ex)
+        msg = serial_dev+"风速仪端口打开失败"+str(ex)
         #print(msg)
         return msg
     if ser.is_open:
-        print("port open success")
+        print(serial_dev+"port open success")
         # hex（16进制）转换为bytes（2进制），应注意python3.7与python2.7此处转换不同
         send_data = bytes.fromhex(speed)  # 发送数据转换为b'\xff\xff\xff\xff\xff'
         ser.write(send_data)  # 发送数据
@@ -39,6 +39,8 @@ def read_data():
             print(str(str_return_data[6:10]))
             print("当前风速为：", end="")
             print(str(winspeed)+"m/s")  # 16进制转为整形   CO值
+
+        ser.close()
                 # print()
                 # if int(str_return_data[6:10], 16) > 50000:
                 #     print("当前CO浓度过高！")
@@ -46,4 +48,16 @@ def read_data():
         return  winspeed
 if __name__ == "__main__":
     while(True):
-        read_data()
+        serial_dev = "/dev/ttyS0"
+        read_data(serial_dev)
+        serial_dev = "/dev/ttyS1"
+        read_data(serial_dev)
+        # serial_dev = "/dev/ttyS2"
+        # read_data(serial_dev)
+        # serial_dev = "/dev/tty0"
+        # read_data(serial_dev)
+        # serial_dev = "/dev/tty1"
+        # read_data(serial_dev)
+        # serial_dev = "/dev/tty2"
+        # read_data(serial_dev)
+        print("done")

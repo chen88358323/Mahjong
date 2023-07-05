@@ -53,14 +53,14 @@ def checkData(temperature,humidity,co2val):
 		addAlartLog('co2 is too high,' + temperature, '阳台')
 ###根据时间段删除历史数据
 def delByTimeAndSite(sttime,endtime,site):
-	con = pymysql.connect(
-		host='localhost',
-		port=3306,
-		user='root',
-		password='111111',
-		db='sunpeng',
-		charset='utf8'
-	)
+	# con = pymysql.connect(
+	# 	host='localhost',
+	# 	port=3306,
+	# 	user='root',
+	# 	password='111111',
+	# 	db='sunpeng',
+	# 	charset='utf8'
+	# )
 	cur = con.cursor()
 	if(sttime is not None and endtime is not None):
 		cur.execute("delete from  sensordata where site ='%s' and  create_time  between (%s,%s)  " % (
@@ -71,3 +71,10 @@ def delByTimeAndSite(sttime,endtime,site):
 	con.commit()
 	cur.close()
 
+def destroy():
+	if con is not None:
+		print("close con =>"+str(con))
+		cur=con.cursor
+		if(cur is not None):
+			print("close cur =>" + str(cur))
+			cur.close

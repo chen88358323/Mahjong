@@ -41,6 +41,8 @@ def record_by_minute(m=1):
             time.sleep(5)
         
     con.close()
-              
+
+
+
 record_by_minute(5) 
 
