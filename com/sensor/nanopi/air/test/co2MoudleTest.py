@@ -91,7 +91,8 @@ def read_concentration():
 def mh_z19():
     co2 = read_concentration()
     if not co2:
-        return ''
+        print("co2 value is null")
+        return '-1'
     else:
         print('co2:' + str(co2))
         return {'co2': co2}
@@ -279,3 +280,4 @@ def checksum(array):
 if __name__ == '__main__':
     read_all(True)
     mh_z19()
+    print("done")

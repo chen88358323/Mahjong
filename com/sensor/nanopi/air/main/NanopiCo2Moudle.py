@@ -91,10 +91,10 @@ def read_concentration():
 def mh_z19():
     co2 = read_concentration()
     if not co2:
-        return {}
+        return -1
     else:
         print('co2 sersor get:' + str(co2))
-        return {'co2': co2}
+        return  co2
 
 
 def read(serial_console_untouched=False):

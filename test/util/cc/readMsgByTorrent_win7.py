@@ -133,6 +133,90 @@ def filterBigfiles(torrpath, filterLen):
     print('bigfiles:' + str(bigfiles))
 
 
+# 根据文件夹路径，生成扫描文件，并写入结果
+def log(filepath, name):
+    dirname = os.path.dirname(filepath)
+    # 文件夹最后一层名称
+    basename = os.path.split(dirname)[-1]
+    txtpath = filepath + basename + name + '.txt'
+    print('basename==>' + basename)
+    print('dirname==>' + dirname)
+    print('txtfile===>' + txtpath)
+    txtfile = open(txtpath, 'w+', encoding='utf-8')
+    return txtfile
+
+
+# 根据已下载文件名查找对那个的种子文件，值查找目录，查找每个文件使用findTorrentByTxt
+def findTorrentByDirName(torrpath, findstr):
+    txt = log(torrpath, 'search')
+
+    for dirpath, dirnames, filenames in os.walk(torrpath):
+        for filename in filenames:
+            looptag = False
+            portion = os.path.splitext(filename)
+            if portion[1] == ".torrent":
+                torr = os.path.join(dirpath, filename)
+                # print('torr==' + torr)
+                my_torrent = Torrent.from_file(torr)
+                tfiles = my_torrent.files
+                if (tfiles is not None):
+                    for file in tfiles:
+                        torrentpath = file.name
+                        if (findstr in torrentpath):
+                            if looptag:
+                                break
+                            str = torrpath + filename
+                            txt.writelines('*****************')
+                            txt.writelines('\n')
+                            txt.writelines('dirpath' + dirpath)
+                            txt.writelines('\n')
+                            txt.writelines('----------------------')
+                            txt.writelines(torrpath + filename)
+                            torrentFiles2str(tfiles, txt)
+                            # txt.writelines('tfiles' + str(tfiles))
+                            looptag = True
+
+
+    txt.close()
+
+
+# 与findTorrentByDirName 区别，该方法查找种子中的每个文件命名
+def findTorrentByTxt(torrpath, *findstrs):
+    txt = log(torrpath, 'search')
+    for dirpath, dirnames, filenames in os.walk(torrpath):
+        for filename in filenames:
+            portion = os.path.splitext(filename)
+            if portion[1] == ".torrent":
+                torr = os.path.join(dirpath, filename)
+                # print('torr==' + torr)
+                my_torrent = Torrent.from_file(torr)
+                tfiles = my_torrent.files
+                if (tfiles is not None):
+                    for file in tfiles:
+                        torrentpath = file.name
+                        for findstr in findstrs:
+                            if (findstr in torrentpath):
+                                str = torrpath + filename
+                                txt.writelines('*****************')
+                                txt.writelines('\n')
+                                txt.writelines('dirpath' + dirpath)
+                                txt.writelines('\n')
+                                txt.writelines('----------------------')
+                                txt.writelines(torrpath + filename)
+                                torrentFiles2str(tfiles, txt)
+                            # txt.writelines('tfiles' + str(tfiles))
+
+
+    txt.close()
+
+
+def torrentFiles2str(tfiles, log):
+    log.writelines('\n')
+    for f in tfiles:
+        log.writelines(f.name)
+    log.writelines('\n')
+
+
 # torrpath 种子路径
 # filepath 下载文件路径
 # subDirName转移的子文件夹名称，有y ,half
@@ -249,15 +333,7 @@ def mkdirs(path):
 
 
 def getTorrDetail(filepath):
-    dirname = os.path.dirname(filepath)
-    # 文件夹最后一层名称
-    basename = os.path.split(dirname)[-1]
-    txtpath = filepath + basename + '.txt'
-    print('basename==>' + basename)
-    print('dirname==>' + dirname)
-    print('txtfile===>' + txtpath)
-
-    txtfile = open(txtpath, 'w+', encoding='utf-8')
+    txtfile = log(filepath, '')
 
     len = 1024 * 1024
     for dirpath, dirnames, filenames in os.walk(filepath):
@@ -293,10 +369,10 @@ def getTorrDetail(filepath):
 if __name__ == '__main__':
     # filterBigfiles('D:\\Program20190718\\2022-03-01\\1229\\1\\', 2000)
     # filterBigfiles('D:\\Program20190718\\2022-03-01\\1229\\5\\', 2000)
-
+    findTorrentByDirName('D:\\temp\\0555\\', '60W粉丝超')
+    os._exit(0)
     # getTorrDetail('D:\\Program20190718\\2022-03-01\\1119\\')
     # getTorrDetail('D:\\Program20190718\\2022-03-01\\0555\\best\\')
-
 
     # removeFiles('H:\\down\\0333\\1\\un\\y\\')
     # removeFiles('H:\\down\\0323\\best\\un\\y\\')

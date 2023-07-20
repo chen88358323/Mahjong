@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 import time
 import datetime
 import NanopiDBMoudle as  dbMoudle
@@ -28,7 +28,7 @@ def record_by_minute(m):
         # time.sleep(60)
     else:
         print('Failed to get data from Adafruit_DHT22!')
-        time.sleep(1)
+    time.sleep(m)
 
 #异常关闭，目前只有 GPIO 以及db连接需要
 def destroy():
