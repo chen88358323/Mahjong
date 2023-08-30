@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from torrentool.api import Torrent
-import os
-import platform
+import threading
 import shutil
+import os
 
 
 def removeFiles(filepath):
@@ -82,6 +82,10 @@ def getTorrentByDetails(str, filepath):
 # finally:
 # print('dirs',dirs)
 
+
+
+
+
 def editXunleiFile(filepath):
     # filepath = 'D:\\temp\\593254315050521\\demo\\'
     for dirpath, dirnames, filenames in os.walk(filepath):
@@ -144,12 +148,31 @@ def log(filepath, name):
     print('txtfile===>' + txtpath)
     txtfile = open(txtpath, 'w+', encoding='utf-8')
     return txtfile
+# 根据文件夹路径，生成扫描文件，并写入结果
+# append 是否追加，追加True 新建False
+def log(filepath, name,append):
+    dirname = os.path.dirname(filepath)
+    # 文件夹最后一层名称
+    basename = os.path.split(dirname)[-1]
+    txtpath = filepath + basename + name + '.txt'
+    print('basename==>' + basename)
+    print('dirname==>' + dirname)
+    print('txtfile===>' + txtpath)
+    if(append):
+        txtfile = open(txtpath, 'a', encoding='utf-8')
+    else:
+        txtfile = open(txtpath, 'w', encoding='utf-8')
+    return txtfile
 
+def findTorrentByDirNameMulti(torrpath, findstr,threadid):
+    thread = threading.Thread(target=findTorrentByDirName, args=(torrpath, findstr, threadid))
+    thread.start()
 
 # 根据已下载文件名查找对那个的种子文件，值查找目录，查找每个文件使用findTorrentByTxt
-def findTorrentByDirName(torrpath, findstr):
-    txt = log(torrpath, 'search')
+def findTorrentByDirName(torrpath, findstr,threadid):
 
+    txt = log(torrpath, 'search'+threadid,True)
+    txt.writelines('*****************'+findstr+'*****************\r\n')
     for dirpath, dirnames, filenames in os.walk(torrpath):
         for filename in filenames:
             looptag = False
@@ -175,9 +198,8 @@ def findTorrentByDirName(torrpath, findstr):
                             torrentFiles2str(tfiles, txt)
                             # txt.writelines('tfiles' + str(tfiles))
                             looptag = True
-
-
     txt.close()
+
 
 
 # 与findTorrentByDirName 区别，该方法查找种子中的每个文件命名
@@ -332,16 +354,19 @@ def mkdirs(path):
         os.mkdir(path)
 
 
+
 def getTorrDetail(filepath):
-    txtfile = log(filepath, '')
+    txtfile = log(filepath, '',True)
 
     len = 1024 * 1024
+    hundredmb=100*len
     for dirpath, dirnames, filenames in os.walk(filepath):
         for filename in filenames:
             torr = os.path.join(dirpath, filename)
             portion = os.path.splitext(filename)
             txtfile.writelines("=================================" + '\r')
-            txtfile.writelines(portion)
+            torname=repr(portion)#解决包含转义字符的问题
+            txtfile.writelines(torname)
             print("=================================")
             print(portion)
             # 如果后缀是.xltd
@@ -350,28 +375,188 @@ def getTorrDetail(filepath):
                 newnamee = portion[0].replace('.bt', '')
                 os.renames(filepath + portion[0] + portion[1], filepath + newnamee)
             if portion[1] == ".torrent":
+                print("================torrent conteng=================" + '\r\n')
                 print(torr)
-                txtfile.writelines(torr + '\r')
+                txtfile.writelines(torr + '\r\n')
                 my_torrent = Torrent.from_file(torr)
                 tlen = my_torrent.total_size / len
-                txtfile.writelines(str(tlen) + '\r')
+                txtfile.writelines(str(tlen) +'mb'+ '\r\n')
+
                 # print(my_torrent.total_size / len)
                 # print(my_torrent.comment)
+                print(str(my_torrent.files)+ '\r\n')
+
                 print(portion[0] + '          ' + my_torrent.name)
                 for torrfile in my_torrent.files:
-                    if (torrfile.length > 100 * len):
-                        txtfile.writelines(str(torrfile) + '\r')
+                    if (torrfile.length > hundredmb):
+                        tlen=round(torrfile.length / len, 2)
+                        txtfile.writelines(str(tlen) +'mb'+ '\r\n')
                 # filesor tf in list[my_torrent.files]:
 
     txtfile.close()
+    #对比文件完成度
+# def comparefiles(torrpath, downfilesdir,threadid):
+#
+#     txt = log(torrpath, 'compare'+threadid,True)
+#     txt.writelines('*****************'+downfilesdir+'*****************\r\n')
+#     for dirpath, dirnames, filenames in os.walk(torrpath):
+#         for filename in filenames:
+#             looptag = False
+#             portion = os.path.splitext(filename)
+#             if portion[1] == ".torrent":
+#                 torr = os.path.join(dirpath, filename)
+#                 # print('torr==' + torr)
+#                 my_torrent = Torrent.from_file(torr)
+#                 tfiles = my_torrent.files
+#                 if (tfiles is not None):
+#                     for file in tfiles:
+#                         torrentpath = file.name
+#                         if (findstr in torrentpath):
+#                             if looptag:
+#                                 break
+#                             str = torrpath + filename
+#                             txt.writelines('*****************')
+#                             txt.writelines('\n')
+#                             txt.writelines('dirpath' + dirpath)
+#                             txt.writelines('\n')
+#                             txt.writelines('----------------------')
+#                             txt.writelines(torrpath + filename)
+#                             torrentFiles2str(tfiles, txt)
+#                             # txt.writelines('tfiles' + str(tfiles))
+#                             looptag = True
+#     txt.close()
+
+filterfileArray=['小黄片.mht',
+'_性视界.chm',
+'_性视界.html',
+'_性视界.jpg',
+'_性视界.mht',
+'小黄片.chm',
+'小黄片.html',
+'小黄片.jpg',
+'小黄片.mht',
+'_尖叫视频.html',
+'_尖叫视频.jpg',
+'尖叫视频.chm',
+'尖叫视频.mht',
+'_萌萝社.chm',
+'_萌萝社.html',
+'_萌萝社.jpg',
+'_萌萝社.mht',
+'(  1024社区最新地址_3.0 ).htm',
+'(  最新bt合集_3.0 ).html',
+'( 1024社区手机网址发布器 3.0 ).apk',
+'( 1024网址PC端发布器 3.0 ).chm',
+'( 扫码下载1024安卓APP_3.0 ).png',
+'( 1024社区手机网址发布器 3.1 ).apk',
+'( 1024网址PC端发布器 3.1 ).chm',
+'( 扫码下载1024安卓APP_3.1 ).png',
+'1024草榴社区t66y.com.jpg',
+'18p2p by.txt',
+'2048社区 每天更新 同步日韩.html',
+'SEX169 论坛.url',
+'SEX8.cc杏吧_性吧_sex8_杏吧有你春暖花开-.txt',
+'WK綜合論壇 - WaiKeung.net.url',
+'av狼永久地址.url',
+'id16151274@SexInSex.net.txt',
+'公仔箱論壇.url',
+'桃花族论坛.url',
+'比思永久地址.url',
+'草榴最新地址.mht',
+
+]
+    #tfiles 种子里的文件，
+    #downdir 下载目录，包含了种子文件的头目录
+    #todo  多文件，写日志
+def comparefiles(tfile,downdir):
+    txtfile = log(downdir, 'comparefiles',False)
+    txtfile.writelines('tfile' + tfile + '\r\n')
+    txtfile.writelines('downdir' + downdir + '\r\n')
+    print('downdir' + downdir)
+    torrentmap = {}
+    my_torrent = Torrent.from_file(tfile)
+
+    for file in my_torrent.files:  # 遍历种子文件
+        ## 种子内容格式 TorrentFile(name='359\\\尖叫视频.mht', length=325117)
+        tfilename = file.name.replace('\\\\', '\\')
+        # print('tfilename'+tfilename)
+        #截取359目录，由于可能会改名，所以
+        subpath = tfilename.split('\\', 1)[1]
+        if subpath.__contains__('\\'):
+            subname = subpath.split('\\', 1)[1]
+        else:
+            subname=subpath
+        #subpath \尖叫视频.mht
+        #print('subpath'+str(subpath))
+
+        if subname not in filterfileArray:
+            torrentmap.setdefault(subpath, file.length)
+        ## 待增加过滤无用文件实现
+
+
+
+
+    downloadmap={}
+    m=1024*1024
+    for dirpath, dirnames, filenames in os.walk(downdir):
+        txtfile.writelines('dirpath'+dirpath + '\r\n')
+        # print('dirpath'+dirpath)
+        # print('dirnames' + dirnames)
+        for filename in filenames:
+            portion = os.path.splitext(filename)
+            #print("portion[1] "+portion[1])
+            if portion[1] != ".bt":
+                fullname= os.path.join(dirpath, filename)
+                fsize=os.path.getsize(fullname)
+                #print("full path:"+fullname)
+                # fullname=os.path.join(dirpath, ' '+filename)#torrent的file会有空格， 很奇怪
+                torrfilepath=fullname.replace(downdir ,'')
+                #print("torrfilepath :" + torrfilepath)
+                #print("size"+str(round(fsize/m,2))+'mb')
+                downloadmap.setdefault(torrfilepath,fsize)#生成文件列表
+
+
+
+
+
+        #print(tfilename)
+        #print(str(file))
+    downloadfilelist = list(downloadmap.keys())
+    tfiellist=list(torrentmap.keys())
+    txtfile.writelines('downloadfilelist'+str(len(downloadfilelist))+'   '+ '\r\n')#+str(downloadfilelist)
+    # for dfile in downloadfilelist:
+    #print('tfiellist bf' + str(len(tfiellist)) + '   ' + str(tfiellist))
+    for cleanfile in downloadfilelist:
+        if cleanfile in tfiellist:
+            tfiellist.remove(cleanfile)
+    #print('tfiellist af' + str(len(tfiellist)) + '   ' + str(tfiellist))
+    downloadfilesize=0
+    txtfile.writelines("*********************待下载文件列表"+ str(len(tfiellist))+"个***************************"+ '\r\n')
+    for needdownfile in tfiellist:
+
+        tfsize=torrentmap.get(needdownfile)
+        downloadfilesize+=tfsize
+        tfsize =round(tfsize / m, 2)
+        txtfile.writelines(needdownfile+ '\r\n')
+        txtfile.writelines('size:'+str(tfsize)+"mb"+ '\r\n')
+    txtfile.writelines('总占用空间":'+str(round(downloadfilesize / m, 2))+"mb"+ '\r\n')
+    txtfile.close()
+
+
 
 
 if __name__ == '__main__':
     # filterBigfiles('D:\\Program20190718\\2022-03-01\\1229\\1\\', 2000)
     # filterBigfiles('D:\\Program20190718\\2022-03-01\\1229\\5\\', 2000)
-    findTorrentByDirName('D:\\temp\\0555\\', '60W粉丝超')
-    os._exit(0)
-    # getTorrDetail('D:\\Program20190718\\2022-03-01\\1119\\')
+    #findTorrentByDirName('D:\\temp\\0555\\', '60W粉丝超')
+    #os._exit(0)
+
+    #comparefiles("D:\\temp\\0555\\2.torrent","D:\\temp\\0555\\259\\")
+    # filename="STP31812 穿情趣裝的美女狐狸精,全程露臉妩媚誘人,聽狼友指揮互動撩騷,揉奶玩逼自慰呻吟,表情好騷火辣豔舞別錯過"
+    # print(repr(filename))
+    # tormd5("C:\\Users\\Administrator\\Downloads\\best\\推特网红大屁股骚货kbamspbam，怀孕了还能挺着个大肚子拍照拍视频挣钱，太敬业了，奶头变黑 但白虎粉穴依然粉嫩.torrent")
+    # os._exit(0)
+    #getTorrDetail('D:\\temp\\0555\\')
     # getTorrDetail('D:\\Program20190718\\2022-03-01\\0555\\best\\')
 
     # removeFiles('H:\\down\\0333\\1\\un\\y\\')

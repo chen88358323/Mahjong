@@ -1,8 +1,10 @@
 from torrentool.api import Torrent
 import os
-import platform
 import  shutil
-
+import mysqlTemplate as dbtool
+import time
+import queue,threading
+from typing import Any, Tuple
 def removeFiles():
     filepath = 'D:\\temp\\593254315050521\\demo\\'
     array=['【01axg.xyz】.jpg','02AXG.XYZ.png','03axg.XYZ.png','04axg.xyz.png','05axg.xyz.png']
@@ -248,13 +250,167 @@ def getTorrDetail(filepath):
 
     txtfile.close()
 
+#数据库插入缓冲池
+dbqueue = queue.Queue()
+#根据目录获取种子路径列表
+def getTorListByDir(torrdir):
+    datalist = []
+    batchlen = 10
+    sum = 0
+    for dirpath, dirnames, filenames in os.walk(torrdir):
+        i=0
+
+        for filename in filenames:
+            torr = os.path.join(dirpath, filename)
+            portion = os.path.splitext(filename)
+            #print("=================================")
+            #print(portion)
+            if portion[1] == ".torrent":
+                sum+=1
+                # print("================torrent conteng=================" + '\r\n')
+                # print(torr)
+
+                my_torrent = Torrent.from_file(torr)
+                hash = my_torrent.info_hash
+                path = os.path.dirname(torr)
+                tobj = [hash, path, filename]
+                datalist.append(tobj)
+                if i == batchlen:
+                    i = 0
+                    dbqueue.put(datalist)
+                    print("put 2 queue" + str(datalist))
+
+                    datalist = []
+                i += 1
+        if (datalist is not None and len(datalist) > 0):
+            dbqueue.put(datalist)
+            print("put 2 queue" + str(datalist))
+    print("sum:"+str(sum))
+
+#torrPathlist 种子路径列表
+# 列表每条记录包括 hcode ,path, filename
+def converDatalist2DB():
+    count=0
+    while True:
+        # if count==20:
+        #     break
+        if dbqueue.empty():
+            # count+=1
+            print("dbqueue is empty")
+            time.sleep(3)
+        else:
+            datalist=dbqueue.get()
+            count+=10
+            if(count>3000):
+                print("")
+            tag = dbtool.recoderbatch(datalist)
+            if(not tag):#插入失败
+                hashs=[]
+                for arr in datalist:
+                    #[hash, path, filename]
+                    hashs.append(arr[0])
+                    #result dataset  [id ,hcode,path,filename,time]
+                result=dbtool.queryByHashCode(hashs)
+                datalist2=filterDirtyData(datalist,result)
+                if datalist2 is not None and len(datalist2) >0:
+                    dbtool.recoderbatch(datalist2)
+
+                # 获得重复数据，写日志
+                # dupilicatelist = list(set(datalist).difference(set(datalist2)))
+                writer = log("D:\\temp\\0555\\", "findDupulicate", True)
+                writer.writelines("*************************" + '\r\n')
+                writer.close()
+        print("count:"+str(count))
+
+
+
+#reslist 查询数据库返回的重复数据
+#data待过滤数据集，过滤后插入数据库
+#return 返回待插入的数据集
+def filterDirtyData(datalist ,reslist):
+    list=[]
+    if reslist is not None and len(reslist) > 0:
+        for r in reslist:
+            # print("r[1]"+r[1])
+            list.append(r[1])
+        for scr in datalist:
+            if scr[0] in list:#做分支，是否转移种子文件
+                #判断是否为相同文件，相同直接去除，不相同的同源种子，进行位置转移
+                datalist.remove(scr)
+                index = list.index(scr[0])
+                compareTorfile(scr,reslist[index])
+
+                # [hash, path, filename]
+        print("filterDirtyData重新插入数据datalist"+str(datalist))
+        return  datalist
+    else:
+        return
+
+    ####
+    # res is dbTorFile
+    #    format    [id ,hcode,path,filename,time]
+    # tar is scan file
+    # [hash, path, filename]
+    # @return True 表示同源文件可以忽略
+    # @return False 表示不同文件需要处理
+    # ###
+def compareTorfile(tar,res):
+    if tar[0]==res[1]:
+        tarfile=tar[1]+tar[2]
+        dbtfile=res[2]+res[3]
+        if tarfile==dbtfile:
+            return  True
+        else:
+
+            dbtool.recorderDulicateTorrent(tar[0],tar[1],tar[2])
+            return  False
+
+
+def log(filepath, name,append):
+    dirname = os.path.dirname(filepath)
+    # 文件夹最后一层名称
+    basename = os.path.split(dirname)[-1]
+    txtpath = filepath + basename + name + '.txt'
+    # print('basename==>' + basename)
+    # print('dirname==>' + dirname)
+    print('txtfile===>' + txtpath)
+    if(append):
+        txtfile = open(txtpath, 'a', encoding='utf-8')
+    else:
+        txtfile = open(txtpath, 'w', encoding='utf-8')
+    return txtfile
+#根据路径名扫描入库
+def scanTorrentsIntoDB(torrDir):
+    p1 = threading.Thread(target=getTorListByDir, args=(torrDir,))
+
+    p1.start()
+    time.sleep(3)
+    c1 = threading.Thread(target=converDatalist2DB)
+    c1.start()
+
+
+
+# def test():
+#     list1=[[1,2,3],[45,6,7],[8,65,44]]
+#     list2=[2,33,44,55,66]
+#     for l in list1:
+#         if l[1] in list2:
+#             list1.remove(l)
+#     print("list1"+str(list1))
 if __name__ == '__main__':
+    #test()
+    #scanTorrentsIntoDB("D:\\temp\\0555\\t\\")
+    scanTorrentsIntoDB("C:\\Users\\Administrator\\Downloads\\best\\")
+
+    # scanTorrentsIntoDB("D:\\temp\\0555\\t\\0555\\b12\\")
+    # tormd5("C:\\Users\\Administrator\\Downloads\\best\\推特网红大屁股骚货kbamspbam，怀孕了还能挺着个大肚子拍照拍视频挣钱，太敬业了，奶头变黑 但白虎粉穴依然粉嫩.torrent")
+    #os._exit(0)
     # getDulicateFiles()
     # getTorrDetail('D:\\temp\\593254315050521\\1024\\')
     # getTorrDetail('D:\\temp\\best2\\best4\\')
     #getTorrDetail('D:\\360Downloads\\1228\\')
     # writeTorrDetail('D:\\temp\\1228\\')
-    filterBigfiles('D:\\360Downloads\\test\\', 1000)
+    #filterBigfiles('D:\\360Downloads\\test\\', 1000)
     # filterDownFiles('D:\\360Downloads\\1228\\8\\','D:\\temp\\1228\\','y\\')
     # writeTorrDetail('D:\\360Downloads\\1228\\')
 
