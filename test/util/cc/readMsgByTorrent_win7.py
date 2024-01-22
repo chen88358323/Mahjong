@@ -2,6 +2,7 @@
 from torrentool.api import Torrent
 import threading
 import shutil
+from torrentool.exceptions import BencodeDecodingError
 import os
 
 
@@ -204,7 +205,7 @@ def findTorrentByDirName(torrpath, findstr,threadid):
 
 # 与findTorrentByDirName 区别，该方法查找种子中的每个文件命名
 def findTorrentByTxt(torrpath, *findstrs):
-    txt = log(torrpath, 'search')
+    txt = log(torrpath, 'search',False)
     for dirpath, dirnames, filenames in os.walk(torrpath):
         for filename in filenames:
             portion = os.path.splitext(filename)
@@ -239,6 +240,26 @@ def torrentFiles2str(tfiles, log):
     log.writelines('\n')
 
 
+#srctorrpath  种子集散地
+# tartorrpath  待查找种子
+def findTorrentByHash(thash,tartorrpath):
+    thash=thash.lower()
+    #遍历待查找的种子，生成集合
+    for dirpath, dirnames, filenames in os.walk(tartorrpath):
+        for filename in filenames:
+            portion = os.path.splitext(filename)
+            if portion[1] == ".torrent":
+                torr = os.path.join(dirpath, filename)
+                # txt.writelines("dirpath  "+dirpath+'\r\n')
+                # txt.writelines("filename  " + filename + '\r\n')
+                my_torrent = Torrent.from_file(torr)
+                hashcode=my_torrent.info_hash.lower()
+                print('hashcode '+hashcode)
+                if thash== hashcode:
+                    print("hashcode hash find  "  + '\r\n')
+                    print("************************************  " + '\r\n')
+                    print(torr)
+
 # torrpath 种子路径
 # filepath 下载文件路径
 # subDirName转移的子文件夹名称，有y ,half
@@ -259,7 +280,7 @@ def filterDownFiles(torrpath, filepath, subDirName):
 
     # clearMacConfigFile(dirList)
 
-    torrDict = geneTorrentDic(torrpath)
+    torrDict = geneTorrentDic(torrpath,True)
     torrlist = torrDict.keys()
 
     # print('dict===='+str(torrDict))
@@ -295,8 +316,6 @@ def filterDownFiles(torrpath, filepath, subDirName):
     print('移动种子文件：' + str(len(rslist)))
 
     # 计算文件的大小，下载比例
-
-
 def countFile(torrpath, filepath):
     # 搜集下载中文件列表
     namelist = []
@@ -307,23 +326,37 @@ def countFile(torrpath, filepath):
         sizelist.append(cal_size(path))
     fileDict = dict(zip(namelist, sizelist))
 
-    torrDict = geneTorrentDic(torrpath)
+    torrDict = geneTorrentDic(torrpath,False)
     # todo
 
 
 # 根据种子路径生成词典  key 种子名称   val 种子路径
-def geneTorrentDic(torrpath):
+# skipTag 是否跳过Y文件夹
+def geneTorrentDic(torrpath,skipTag):
     torrlist = []
     torrNamelist = []
     for dirpath, dirnames, filenames in os.walk(torrpath):
         for filename in filenames:
-            portion = os.path.splitext(filename)
-            if portion[1] == ".torrent":
-                torr = os.path.join(dirpath, filename)
-                # print('torr=='+torr)
-                my_torrent = Torrent.from_file(torr)
-                torrlist.append(my_torrent.name)
-                torrNamelist.append(torr)
+            if skipTag and dirpath.__contains__('\\y'):  # 跳过已经处理的文件夹中的种子遍历
+                print('skip path'+dirpath)
+                continue
+            else:
+                portion = os.path.splitext(filename)
+                if portion[1] == ".torrent":
+                    torr = os.path.join(dirpath, filename)
+                    # print('torr=='+torr)
+                    try:
+                        my_torrent = Torrent.from_file(torr)
+                        torrlist.append(my_torrent.name)
+                        torrNamelist.append(torr)
+                    except BencodeDecodingError:
+                        print("error " + filename)
+                        continue
+                    except IndexError:
+                        print("error " + filename)
+                        continue
+
+
     torrDict = dict(zip(torrlist, torrNamelist))
     return torrDict
 
@@ -379,12 +412,15 @@ def getTorrDetail(filepath):
                 print(torr)
                 txtfile.writelines(torr + '\r\n')
                 my_torrent = Torrent.from_file(torr)
+                txtfile.writelines(my_torrent.info_hash + '\r\n')
                 tlen = my_torrent.total_size / len
                 txtfile.writelines(str(tlen) +'mb'+ '\r\n')
 
                 # print(my_torrent.total_size / len)
                 # print(my_torrent.comment)
                 print(str(my_torrent.files)+ '\r\n')
+
+
 
                 print(portion[0] + '          ' + my_torrent.name)
                 for torrfile in my_torrent.files:
@@ -465,14 +501,26 @@ filterfileArray=['小黄片.mht',
 '草榴最新地址.mht',
 
 ]
+
+#用来扫描half文件夹下所有待扫描的半下载文件
+# downdir 下载目录，包含了种子文件的头目录
+def countHalfFiles(downdir):
+    for root, dirs, files_list in os.walk(downdir):
+        for file_name in files_list:
+            if file_name.endswith('torrent'):
+                tfile=os.path.join(root, file_name)
+                print("tfile:"+tfile)
+                print("root:"+root)
+                comparefiles(tfile,root)
+
     #tfiles 种子里的文件，
     #downdir 下载目录，包含了种子文件的头目录
-    #todo  多文件，写日志
+    #todo  写日志
 def comparefiles(tfile,downdir):
-    txtfile = log(downdir, 'comparefiles',False)
-    txtfile.writelines('tfile' + tfile + '\r\n')
-    txtfile.writelines('downdir' + downdir + '\r\n')
-    print('downdir' + downdir)
+    txtfile = log(downdir, '---comparefiles',False)
+    txtfile.writelines('tfile  ' + tfile + '\r\n')
+    txtfile.writelines('downdir  ' + downdir + '\r\n')
+    print('downdir  ' + downdir)
     torrentmap = {}
     my_torrent = Torrent.from_file(tfile)
 
@@ -490,7 +538,9 @@ def comparefiles(tfile,downdir):
         #print('subpath'+str(subpath))
 
         if subname not in filterfileArray:
-            torrentmap.setdefault(subpath, file.length)
+            if not subname.__contains__('如果您看到此文件，请升级到BitComet'):
+                txtfile.writelines("subpath :" + subpath)
+                torrentmap.setdefault(subpath, file.length)
         ## 待增加过滤无用文件实现
 
 
@@ -499,25 +549,28 @@ def comparefiles(tfile,downdir):
     downloadmap={}
     m=1024*1024
     for dirpath, dirnames, filenames in os.walk(downdir):
-        txtfile.writelines('dirpath'+dirpath + '\r\n')
+        # txtfile.writelines('dirpath'+dirpath + '\r\n')
         # print('dirpath'+dirpath)
         # print('dirnames' + dirnames)
         for filename in filenames:
             portion = os.path.splitext(filename)
             #print("portion[1] "+portion[1])
-            if portion[1] != ".bt":
+
+            if  filename.endswith('.bt.xltd'):
+                fullname = os.path.join(dirpath, filename)
+                os.remove(fullname)
+            elif portion[1] != ".bt":#处理待下载文件，
                 fullname= os.path.join(dirpath, filename)
                 fsize=os.path.getsize(fullname)
                 #print("full path:"+fullname)
                 # fullname=os.path.join(dirpath, ' '+filename)#torrent的file会有空格， 很奇怪
                 torrfilepath=fullname.replace(downdir ,'')
-                #print("torrfilepath :" + torrfilepath)
+
+                txtfile.writelines("torrfilepath :" + torrfilepath)
+                torrfilepath = clearPath(torrfilepath)
+                txtfile.writelines("torrfilepathX :" + torrfilepath)
                 #print("size"+str(round(fsize/m,2))+'mb')
                 downloadmap.setdefault(torrfilepath,fsize)#生成文件列表
-
-
-
-
 
         #print(tfilename)
         #print(str(file))
@@ -526,12 +579,13 @@ def comparefiles(tfile,downdir):
     txtfile.writelines('downloadfilelist'+str(len(downloadfilelist))+'   '+ '\r\n')#+str(downloadfilelist)
     # for dfile in downloadfilelist:
     #print('tfiellist bf' + str(len(tfiellist)) + '   ' + str(tfiellist))
-    for cleanfile in downloadfilelist:
-        if cleanfile in tfiellist:
-            tfiellist.remove(cleanfile)
+    tfiellist=getUndownFileList(tfiellist,downloadfilelist)
+    # for cleanfile in downloadfilelist:
+    #     if cleanfile in tfiellist:
+    #         tfiellist.remove(cleanfile)
     #print('tfiellist af' + str(len(tfiellist)) + '   ' + str(tfiellist))
-    downloadfilesize=0
-    txtfile.writelines("*********************待下载文件列表"+ str(len(tfiellist))+"个***************************"+ '\r\n')
+    downloadfilesize=0#待下载文件总大小
+    txtfile.writelines("********************v1.0 待下载文件列表"+ str(len(tfiellist))+"个***************************"+ '\r\n')
     for needdownfile in tfiellist:
 
         tfsize=torrentmap.get(needdownfile)
@@ -539,8 +593,35 @@ def comparefiles(tfile,downdir):
         tfsize =round(tfsize / m, 2)
         txtfile.writelines(needdownfile+ '\r\n')
         txtfile.writelines('size:'+str(tfsize)+"mb"+ '\r\n')
-    txtfile.writelines('总占用空间":'+str(round(downloadfilesize / m, 2))+"mb"+ '\r\n')
+    downloadfilesize=round(downloadfilesize / m, 2)
+    if(downloadfilesize<2 or len(tfiellist)<10):#小于2m,近似于下载完成优先处理
+        finishedtorr = log(downdir, '-nearly', False)
+        finishedtorr.close()
+    txtfile.writelines('总占用空间":'+str(downloadfilesize)+"mb"+ '\r\n')
     txtfile.close()
+
+#解决py3.7 兼容性问题，py3.10可以不使用此方法
+def clearPath(tfilepath):
+    if str(tfilepath).startswith('\\'):
+        return tfilepath[1:]
+#tfiles  种子文件列表
+# downedfiles  已下载文件列表
+def getUndownFileList(tfiles,downedfiles):
+    tmap={}#key 去除了路径中的所有空格， val原路径
+    for tf in tfiles:
+        ctf=tf.replace(" ","")
+        tmap.setdefault(ctf,tf)
+    tflist=tmap.keys()
+    dmap={}
+    for df in downedfiles:
+        cdf=df.replace(" ","")
+        dmap.setdefault(cdf,df)
+    dflist=dmap.keys()
+    for dfile in dflist:
+        if dfile in tflist:
+            tmap.pop(dfile)
+
+    return  tmap.values()
 
 
 
@@ -548,8 +629,8 @@ def comparefiles(tfile,downdir):
 if __name__ == '__main__':
     # filterBigfiles('D:\\Program20190718\\2022-03-01\\1229\\1\\', 2000)
     # filterBigfiles('D:\\Program20190718\\2022-03-01\\1229\\5\\', 2000)
-    #findTorrentByDirName('D:\\temp\\0555\\', '60W粉丝超')
-    #os._exit(0)
+    findTorrentByDirName('C:\\Users\\Administrator\\Downloads\\best\\', '长腿高跟 脸穴同框自慰玩穴 开档骚丝袜 高清7','thread-1')
+    os._exit(0)
 
     #comparefiles("D:\\temp\\0555\\2.torrent","D:\\temp\\0555\\259\\")
     # filename="STP31812 穿情趣裝的美女狐狸精,全程露臉妩媚誘人,聽狼友指揮互動撩騷,揉奶玩逼自慰呻吟,表情好騷火辣豔舞別錯過"

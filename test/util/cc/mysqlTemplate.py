@@ -42,6 +42,61 @@ def recorderDulicateTorrent(hcode, path, filename):
 	finally:
 		cur.close()
 
+def delDulicateTorrent(hashs):
+	res=True
+	cur=con.cursor()
+	try:
+		sql = "delete from  duplicatetor  where  duplicatetor.id in ('{}')".format("','".join(hashs))
+		cur.execute(sql)
+		con.commit()
+		# 获取查询结果
+		# results = cur.fetchall()
+		#print("query result:" + str(results))
+	except Exception as e:
+		res = False
+		con.rollback()
+		print("queryByHashCode失败 Exception"+str(e))
+	except pymysql.err.IntegrityError as due:
+		res = False
+		con.rollback()
+		# Map some error codes to IntegrityError, since they seem to be
+		# misclassified and Django would prefer the more logical place.
+		print("queryByHashCode IntegrityError"+str(due))
+
+	finally:
+		# con.close()
+		cur.close()
+		return res
+
+
+
+#@return  format   list [id ,hcode,path,filename,time]
+def queryduplicatetor():
+	results=[]
+	cur=con.cursor()
+	try:
+		sql = "select * from  duplicatetor  "
+			  # ' (' + ','.join('?'*len(hashs)) + ')'
+		cur.execute(sql)
+		# 获取查询结果
+		results = cur.fetchall()
+		#print("query result:" + str(results))
+	# if results is not None and len(results) >0:
+	# 	for data in results:
+	except Exception as e:
+		print("queryByHashCode失败 Exception"+str(e))
+	except pymysql.err.IntegrityError as due:
+		# Map some error codes to IntegrityError, since they seem to be
+		# misclassified and Django would prefer the more logical place.
+		print("queryByHashCode IntegrityError"+str(due))
+
+	finally:
+		# con.close()
+		cur.close()
+		return results
+
+
+
 def recoderbatch(list):
 	cur = con.cursor()
 	try:
