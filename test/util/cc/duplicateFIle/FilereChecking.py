@@ -1,13 +1,8 @@
 import datetime
 import hashlib
+
 import os
-import shutil
-import win32api
-import win32con
-
-
 class FileChecking():
-
     def __init__(self):
         print("正在进行初始化设置......")
         #默认的配置信息
@@ -35,9 +30,8 @@ class FileChecking():
         #重命名存储结果的文件
         nowTime = datetime.datetime.now().strftime('%Y%m%d%H%M%S')+".txt"
         self.saveReaultPath+=str(nowTime)
-        print(self.saveReaultPath)
 
-        print("初始化完成！")
+        print(self.saveReaultPath+"初始化完成！")
 
         #执行主程序
         self.__main()
@@ -57,18 +51,30 @@ class FileChecking():
 
 
 
-    def __getSearchHeavyPaths(self):#获取需要进行查重的文件夹目录
-        print("请输入路径(以#为输入结束标志）：", end="")
-        while True:
-            print("请输入路径：", end="")
-            path = input()
-            if path == "#":
+    # def __getSearchHeavyPaths(self):#获取需要进行查重的文件夹目录
+    #     print("请输入路径(以#为输入结束标志）：", end="")
+    #     while True:
+    #         print("请输入路径：", end="")
+    #         path = input()
+    #         if path == "#":
+    #             break
+    #         else:
+    #             if path not in self.searchHeavyPaths:
+    #                 self.searchHeavyPaths.add(path)
+    #             else:
+    #                 print("输入的路径重复，请检查路径。")
+
+    #根据后缀名判断是否是视频文件
+    def __isVideo(self,path):
+        videoType = ['avi', 'mp4', 'ts', 'flv', 'rmvb', 'rm']
+        res=False
+        for type in videoType:
+            if(path.endswith(type)):
+                res=True
                 break
-            else:
-                if path not in self.searchHeavyPaths:
-                    self.searchHeavyPaths.add(path)
-                else:
-                    print("输入的路径重复，请检查路径。")
+        return  res
+    #无用文件
+    # def filterUselessFile(filename):
 
     def __findFileTree(self,path):#获取需要对比的文件完整路径
         path = path.replace("\\", "/")
@@ -78,15 +84,19 @@ class FileChecking():
                 mpath = os.path.join(path, m)
                 if os.path.isfile(mpath):
                     pt = os.path.abspath(mpath)
-                    if pt not in self.WaitForComparisonFiles:
-                        self.WaitForComparisonFiles.add(pt)
-                    print("  "+pt)
+                    #print("file  " + pt)
+                    if not os.path.isdir(pt) and self.__isVideo(pt):
+                        print("file "+pt)
+                        if pt not in self.WaitForComparisonFiles:
+                            self.WaitForComparisonFiles.add(pt)
+
                 else:
                     pt = os.path.abspath(mpath)
-                    print("  "+pt)
+                    print("not is file  "+pt)
                     self.__findFileTree(pt)
             except:
                 pass
+
 
     def __findAllFileTree(self):#查找每一个待查重的文件的所有的子文件
         print("\n\n\n\n准备获取所有待对比的文件完整路径......")
@@ -119,7 +129,9 @@ class FileChecking():
         print("查重完成，正在生成结果......")
 
     def __saveReault(self,pt):
-        file=open(self.saveReaultPath,"a",encoding='utf-8')
+        logfile='D:\\temp\\dist\\'+self.saveReaultPath
+        print('log '+logfile)
+        file=open(logfile,"a",encoding='utf-8')
         file.write(pt+"\n")
         file.close()
 
@@ -178,6 +190,18 @@ class FileChecking():
         sha512file.close()
         print(sha512)
         return sha512
+
+    def __getSearchHeavyPaths(self):#获取需要进行查重的文件夹目录
+        self.searchHeavyPaths.add("D:\\360Download\\仓鼠管家\\")
+        # self.searchHeavyPaths.add("V:\\")
+        # self.searchHeavyPaths.add("W:\\")
+        # self.searchHeavyPaths.add("X:\\")
+        # self.searchHeavyPaths.add("H:\\done")
+        # self.searchHeavyPaths.add("I:\\done")
+        # self.searchHeavyPaths.add("J:\\done")
+        # self.searchHeavyPaths.add("K:\\done")
+
+
 
 
 if __name__ == '__main__':
