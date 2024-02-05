@@ -67,9 +67,9 @@ def truncatetables(tablename):
         logger.log.info("sql "+sql+" is done")
 
 
-def addBatch(filedetailmodeList):#todo 唯一性失败，优化细分
-    logger.log.info("add batch "+str(len(filedetailmodeList)))
-    filedetailmodeList=iter(filedetailmodeList)
+def addBatch(list):#todo 唯一性失败，优化细分
+    logger.log.info("add batch "+str(len(list)))
+    filedetailmodeList=iter(list)
     se=Session()
     try:
         se.bulk_save_objects(filedetailmodeList)
@@ -84,6 +84,8 @@ def addBatch(filedetailmodeList):#todo 唯一性失败，优化细分
 
     finally:
         se.close()
+        list.clear()
+
 def convert2FileDetailModelDup(fileDetailModel):
     dupobj = FileDetailModelDup(fileDetailModel.hcode, fileDetailModel.isdir,
                                 fileDetailModel.path, fileDetailModel.filename, fileDetailModel.filetype,
@@ -108,18 +110,23 @@ def clearDuplicatRecorders(filedetailmodeList):
             idx=hashs.index(dbrecoder.hcode)
             hashs.pop(idx)
             removefd=filedetailmodeList.pop(idx)#FileDetailModel对象需要转化为FileDetailModelDup对象
-            dupobj=convert2FileDetailModelDup(removefd)
-            duplist.append(dupobj)
-            if removefd.filename!=dbrecoder.filename:
+
+            dbpath=dbrecoder.systemdriver+dbrecoder.path+dbrecoder.filename
+            removedpath=removedpath.systemdriver+removedpath.path+removedpath.filename
+            if dbpath!=removedpath:
+                dupobj = convert2FileDetailModelDup(removefd)
+                duplist.append(dupobj)
                 logger.log.error("dbrecoder hcode:" + dbrecoder.hcode + '  filename:' + strutil.clearpath(dbrecoder.filename))
                 logger.log.error("scanfile  hcode:" + removefd.hcode + '  filename' + strutil.clearpath(removefd.filename))
             #TODO 将重复数据装入torr-dupilicate表
         if(duplist is not None and len(duplist)>0):
             logger.log.info("重复数据更新至filedetail_dup表中，数量"+str(len(duplist)))
             addBatch(duplist)
+            duplist.clear()
         if(filedetailmodeList is not None and len(filedetailmodeList)>0):#清理后还有待插入项
             logger.log.info("去重后该批次数据 "+str(len(filedetailmodeList)))
             addBatch(filedetailmodeList)
+            filedetailmodeList.clear()
         else:
             logger.log.error("去重后该批次没有需要插入的数据")
     else:

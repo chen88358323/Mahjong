@@ -56,6 +56,7 @@ class FileChecking():
                     fileobjdup=FileDetailModelDao.convert2FileDetailModelDup(fileobj)
                     duplist.append(fileobjdup)
                     FileDetailModelDao.addBatch(duplist)
+                    duplist.clear()
             fileObjList=tarlist
 
         return fileObjList
