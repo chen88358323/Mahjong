@@ -80,10 +80,7 @@ class FileChecking():
             for filename in filenames:
                 if i==batchsize:#满足条件批量插入
                     i=0
-                    fileObjList= self.__clearFileObjList(fileObjList, fileCodeSet)
-                    FileDetailModelDao.addBatch(fileObjList)
-                    fileObjList.clear()
-                    fileCodeSet.clear()
+                    self.__batchAndClear(fileObjList,fileCodeSet)
 
                 portion = os.path.splitext(filename)
                 if portion[1] in videoType:
@@ -106,15 +103,17 @@ class FileChecking():
                     fileObjList.append(obj)
                     fileCodeSet.add(code)
                     i+=1
+        #
+        self.__batchAndClear(fileObjList,fileCodeSet)
 
-        if(fileObjList is not None and len(fileObjList)>0):
+    #fileObjList  FileDetailModel 集合
+    #fileCodeSet  hcode set ，放置提交的一批次数据中含有重复内容
+    def __batchAndClear(self,fileObjList,fileCodeSet):
+        if (fileObjList is not None and len(fileObjList) > 0):
             fileObjList = self.__clearFileObjList(fileObjList, fileCodeSet)
             FileDetailModelDao.addBatch(fileObjList)
             fileObjList.clear()
             fileCodeSet.clear()
-
-
-
 
 
     def __findAllFileTree(self):#查找每一个待查重的文件的所有的子文件
@@ -149,20 +148,24 @@ class FileChecking():
         dupfilelist=[]
         num=FileDetailModelDao.querydupfileCounts()
         if(num>0):
-            print('show result duplicate num:'+num)
+            print('show result duplicate num:'+str(num))
             #1.获取重复数据列表
             dupfilelist=FileDetailModelDao.queryAlldupfiles()
-            for dupfile in dupfilelist:
-                # 2.查询对应数据原始数据对应列表
-                file=FileDetailModelDao.queryfilebycode(dupfile.hcode)
-                if file is None:  # 这里好像判断没啥用，不如直接返回
-                    logger.log.info(dupfile.hcode+" 没有对应filedetail表的记录")
-                else:
-                    logger.log.warn("*******************************************")
-                    logger.log.warn(dupfile.hcode )
-                    logger.log.warn("file   :"+(file.systemdriver+file.path+file.filename))
-                    logger.log.warn("dupfile:"+(dupfile.systemdriver+dupfile.path+dupfile.filename))
-
+            if dupfilelist is not None and len(dupfilelist)>0:
+                for dupfile in dupfilelist:
+                    # 2.查询对应数据原始数据对应列表
+                    file=FileDetailModelDao.queryfilebycode(dupfile.hcode)
+                    if file is None:  # 这里好像判断没啥用，不如直接返回
+                        logger.log.info(dupfile.hcode+" 没有对应filedetail表的记录")
+                    else:
+                        logger.log.warning("*******************************************")
+                        logger.log.warning(dupfile.hcode )
+                        logger.log.warning("file   :"+(file.systemdriver+file.path+file.filename))
+                        logger.log.warning("dupfile:"+(dupfile.systemdriver+dupfile.path+dupfile.filename))
+                        logger.log.warning("                             ")
+            else:
+                logger.log.warn("*******************************************")
+                logger.log.warn("filedetail_dup 无数据")
 
             #3. todo 迁移文件至缓存文件夹
         else:

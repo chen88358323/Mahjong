@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from test.util.cc.duplicateFIle.model.datasetup import engine ,Base
+from test.util.cc.duplicateFIle.model.Datasetup import engine ,Base
 from test.util.cc.duplicateFIle.model.FileDetailModel import FileDetailModel
 from test.util.cc.duplicateFIle.model.FileDetailModelDup import FileDetailModelDup
 from sqlalchemy.orm import sessionmaker
@@ -9,7 +9,6 @@ from sqlalchemy.exc import SQLAlchemyError,IntegrityError
 from test.util.cc.duplicateFIle import logger
 from test.util.cc.duplicateFIle.utils import  strutil
 from sqlalchemy.sql import text
-from cattr import structure
 # # 创建数据库链接池，直接使用session即可为当前线程拿出一个链接对象conn
 # # 内部会采用threading.local进行隔离
 # session = scoped_session(Session)
@@ -32,7 +31,7 @@ def queryfilebycode(hcode :str ):
     # Create a session to interact with the database
     with Session() as session:
         # filelist=session.query(FileDetailModel).filter_by(FileDetailModel.hcode==hcode,FileDetailModel.filetype==filename).all()
-        file = session.query(FileDetailModel).filter_by(FileDetailModel.hcode == hcode).first()
+        file = session.query(FileDetailModel).filter(FileDetailModel.hcode == hcode).first()
 
     return file
 
@@ -51,10 +50,13 @@ def queryAlldupfilesByOffset(off,lim):
         num=session.query(FileDetailModelDup).offset(off).limit(lim)
     return num
 
-def queryAlldupfiles(off,lim):
+def queryAlldupfiles():
     with Session() as session:
         dupfilelist=session.query(FileDetailModelDup).\
-            order_by(FileDetailModelDup.creattime.desc()).all
+            order_by(FileDetailModelDup.creattime.desc()).all()
+        print(type(dupfilelist))
+        for f in dupfilelist:
+            print(f)
     return dupfilelist
 
 def truncatetables(tablename):

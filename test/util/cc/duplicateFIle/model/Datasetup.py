@@ -1,12 +1,7 @@
 # -*- coding: utf-8 -*-
-import sqlalchemy
-import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, DateTime,Index
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
-from sqlalchemy.orm import scoped_session
 engine = create_engine("mysql+pymysql://root:111111@localhost/torr")
     # ,
     # encoding='utf8',

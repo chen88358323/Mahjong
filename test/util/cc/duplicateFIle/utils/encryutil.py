@@ -6,6 +6,7 @@ import os,time,mmap
 # 相关的信息摘要算法
 #显示文件单位 300M
 msize = 300 * 1024 * 1024
+big_file_read_size=100 * 1024 * 1024
 def mdavMD5( path):
     md5file = open(path, 'rb')
     md5 = hashlib.md5(md5file.read()).hexdigest()
@@ -37,22 +38,37 @@ def mdavMD5HighPerform( path):
             logger.log.info(md5 + '   ' + str(round(fsize, 2)) + 'Mb     ' + path)
             return md5
 
+
+
+    return md5_hasher.hexdigest()
 @getMethodTime
 def calc_file_hash(filename):
     size=os.path.getsize(filename)
+    md5hasher = hashlib.md5()
     ''' 
     Calculate the file hash.
     In order to have better performance, if the file is larger than 4MiB,
     only the first and last 100MiB content of the file will take into consideration
     '''
     if size <= msize:
-        return hashlib.md5(open(filename, 'rb').read()).hexdigest()
+        with open(filename, "rb") as f:
+            for chunk in iter(lambda: f.read(8096), b""):
+                md5hasher.update(chunk)
+        return md5hasher.hexdigest()
     else:
-        f = open(filename, 'rb')
-        #偏移量，大于300M的文件，读取前300M以及最后面的300M
-        f.seek(size - msize)
-        md51 = hashlib.md5(f.read(msize)).hexdigest()
-        return hashlib.md5(md51 + f.read(msize)).hexdigest()
+        with open(filename, 'rb') as f:
+         #偏移量，大于300M的文件，读取前100M以及最后面的100M
+            md5hasher.update(f.read(big_file_read_size))
+            f.seek(size - big_file_read_size)
+            md5hasher.update(f.read(big_file_read_size))
+            return md5hasher.hexdigest()
+@getMethodTime
+def calculate_md5_high_performance(file_path):
+    md5_hasher = hashlib.md5()
+    with open(file_path, 'rb', buffering=0) as file:
+        for chunk in iter(lambda: file.read(8192), b''):
+            md5_hasher.update(chunk)
+    return md5_hasher.hexdigest()
 
 
 def mdavSHA1( path):
