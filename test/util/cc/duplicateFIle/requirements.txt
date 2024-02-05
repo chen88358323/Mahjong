@@ -1,0 +1,4 @@
+#cd D:\CODE\github\mahjong\python-mahjong\test\util\cc\duplicateFIle
+#pipreqs ./ --encoding=utf8
+elasticsearch==8.12.0
+SQLAlchemy==2.0.25
