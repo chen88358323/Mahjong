@@ -10,8 +10,8 @@ from sqlalchemy.orm import scoped_session
 # # 内部会采用threading.local进行隔离
 # session = scoped_session(Session)
 
-class FileDetailModel(Base):
-    __tablename__ = 'filedetails'  # 表名
+class FileDetailModelDup(Base):
+    __tablename__ = 'filedetails_dup'  # 表名
     id = Column(Integer, primary_key=True)
     hcode = Column(String(50))
     isdir = Column(Integer)
@@ -22,7 +22,6 @@ class FileDetailModel(Base):
     keyword = Column(String(200))
     systemdriver=Column(String(50))
     platformscan = Column(String(10))
-
 
     creattime= Column(DateTime, default=datetime.datetime.now, comment="扫描文件时间")
     modifiedtime= Column(DateTime, default=datetime.datetime.now, comment="文件修改时间")
@@ -37,18 +36,17 @@ class FileDetailModel(Base):
                f"creattime:{self.creattime} modifiedtime:{self.modifiedtime}>"
         # 初始化中给对象属性赋值
 
-    def __init__(self, hcode, isdir, path, filename, filetype,
-                 systemdriver, platformscan,
-                 keyword, belong):
-        self.hcode = hcode
-        self.isdir = isdir
-        self.path = path
-        self.filename = filename
-        self.filetype = filetype
-        self.systemdriver = systemdriver
-        self.platformscan = platformscan
-        self.keyword = keyword
-        self.belong = belong
+    def __init__(self, hcode, isdir, path,filename,filetype,systemdriver,platformscan,
+                 keyword,belong):
+        self.hcode=hcode
+        self.isdir=isdir
+        self.path=path
+        self.filename=filename
+        self.filetype=filetype
+        self.systemdriver=systemdriver
+        self.platformscan=platformscan
+        self.keyword=keyword
+        self.belong=belong
         # if creattime is None:
         #     self.creattime=datetime.datetime.now
         # else:

@@ -192,10 +192,10 @@ class FileChecking():
         return sha512
 
     def __getSearchHeavyPaths(self):#获取需要进行查重的文件夹目录
-        self.searchHeavyPaths.add("D:\\360Download\\仓鼠管家\\")
-        # self.searchHeavyPaths.add("V:\\")
-        # self.searchHeavyPaths.add("W:\\")
-        # self.searchHeavyPaths.add("X:\\")
+        self.searchHeavyPaths.add("E:\\")
+        self.searchHeavyPaths.add("F:\\")
+        self.searchHeavyPaths.add("G:\\")
+        self.searchHeavyPaths.add("H:\\")
         # self.searchHeavyPaths.add("H:\\done")
         # self.searchHeavyPaths.add("I:\\done")
         # self.searchHeavyPaths.add("J:\\done")

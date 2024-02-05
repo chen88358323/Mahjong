@@ -1,12 +1,14 @@
 import datetime
-import hashlib
-import os
-import copy
-from test.util.cc.duplicateFIle.model import FileDetailModelDao,FileDetailModel
+
+import os,sys,platform
+from test.util.cc.duplicateFIle.model import FileDetailModelDao,FileDetailModel,FileDetailModelDup
 from test.util.cc.duplicateFIle import logger
+from test.util.cc.duplicateFIle.utils import  encryutil
 videoType = ['.avi', '.mp4', '.ts', '.flv', '.rmvb', '.rm']
 #批量文件处理个数
-batchsize=50
+platform='windows'
+batchsize=500
+
 class FileChecking():
     def __init__(self):
         logger.log.info("正在进行初始化设置......")
@@ -41,24 +43,38 @@ class FileChecking():
         if len(fileObjList)!=len(fileCodeSet):
 
             tarlist=[]
+            duplist=[]
             for fileobj in fileObjList:
                 if fileobj.hcode in fileCodeSet:
                     fileCodeSet.remove(fileobj.hcode)
                     tarlist.append(fileobj)
             dulicatelist= list(set(fileObjList)-set(tarlist))
             if(len(dulicatelist))>0:
-                logger.log.error("该记录存在重复数据")
+
+                logger.log.error("上传数据集存在重复数据")
                 for fileobj in dulicatelist:
-                    logger.log.error(str(fileobj))
+                    fileobjdup=FileDetailModelDao.convert2FileDetailModelDup(fileobj)
+                    duplist.append(fileobjdup)
+                    FileDetailModelDao.addBatch(duplist)
             fileObjList=tarlist
 
         return fileObjList
 
+    def __getdriver(self,path):
+        driver, rem = os.path.splitdrive(path)
+        return  driver
 
     # def filterUselessFile(filename):
+    #path  获取需要对比的文件完整路径
+    #
     def __findFileDetail(self,path):#获取需要对比的文件完整路径
         fileObjList=[]
         fileCodeSet=set()
+
+        # dirver为盘符路径  C:\Users\wuyanzu\  获取盘符为c:
+        driver=self.__getdriver(path)
+        platformscan=self.__getPlatform()
+
         for dirpath, dirnames, filenames in os.walk(path):
             i=0
             for filename in filenames:
@@ -74,23 +90,28 @@ class FileChecking():
                     fullfilepath = os.path.join(dirpath, filename)
 
                     # DBModule.add
-                    code=self.__mdavMD5(fullfilepath)
-                    if os.path.isdir(fullfilepath):
-                        isDir=1
-                    else:
+                    #code=self.__mdavMD5HighPerform(fullfilepath)
+                    #头尾计算md5
+                    code=encryutil.calc_file_hash(fullfilepath)
+
+                    if os.path.isfile(fullfilepath):
                         isDir=0
+                    else:
+                        isDir=1
                     # dirpath  filename portion[1]
-                    obj=FileDetailModel.FileDetailModel(hcode=code,isdir=isDir,path=dirpath,filename=filename,
-                                        filetype=portion[1])
+                    filedir = dirpath.replace(driver, '')
+                    obj=FileDetailModel.FileDetailModel(hcode=code,isdir=isDir,path=filedir,filename=filename,
+                                        filetype=portion[1],systemdriver=driver,platformscan=platformscan,
+                                                        keyword=None,belong=None)
                     fileObjList.append(obj)
                     fileCodeSet.add(code)
                     i+=1
 
-            if(fileObjList is not None and len(fileObjList)>0):
-                fileObjList = self.__clearFileObjList(fileObjList, fileCodeSet)
-                FileDetailModelDao.addBatch(fileObjList)
-                fileObjList.clear()
-                fileCodeSet.clear()
+        if(fileObjList is not None and len(fileObjList)>0):
+            fileObjList = self.__clearFileObjList(fileObjList, fileCodeSet)
+            FileDetailModelDao.addBatch(fileObjList)
+            fileObjList.clear()
+            fileCodeSet.clear()
 
 
 
@@ -123,69 +144,84 @@ class FileChecking():
         file.write(pt+"\n")
         file.close()
 
+    #比对两个数据表内的数据
     def __showReault(self):
-        for i in self.result.keys():
-            if self.result[i].__len__()>1:
-                logger.log.info("下列文件的重复文件(校验码{})：".format(i))
-                self.__saveReault("\n\n\n下列文件的重复文件(校验码{})：".format(i))
-                for j in self.result[i]:
-                    logger.log.info(j)
-                    self.__saveReault(j)
+        dupfilelist=[]
+        num=FileDetailModelDao.querydupfileCounts()
+        if(num>0):
+            print('show result duplicate num:'+num)
+            #1.获取重复数据列表
+            dupfilelist=FileDetailModelDao.queryAlldupfiles()
+            for dupfile in dupfilelist:
+                # 2.查询对应数据原始数据对应列表
+                file=FileDetailModelDao.queryfilebycode(dupfile.hcode)
+                if file is None:  # 这里好像判断没啥用，不如直接返回
+                    logger.log.info(dupfile.hcode+" 没有对应filedetail表的记录")
+                else:
+                    logger.log.warn("*******************************************")
+                    logger.log.warn(dupfile.hcode )
+                    logger.log.warn("file   :"+(file.systemdriver+file.path+file.filename))
+                    logger.log.warn("dupfile:"+(dupfile.systemdriver+dupfile.path+dupfile.filename))
+
+
+            #3. todo 迁移文件至缓存文件夹
+        else:
+            print( 'filedetail_dup 无重复数据')
+
+
 
     #主流程
     def __main(self):
+        path = input()
+        print("清理表数据请输入y,拒绝请按其他键")
+        if path == "y":
+            #清理数据表
+            self.__cleartables()
+        else:
+            print("未清理表数据")
         #1.加载待扫描路径
         self.__getSearchHeavyPaths()
         # 2.开始扫描入库
         self.__findAllFileTree()
-        #入库
+        # 3.数据比较
 
         #es
         #写文件
         # self.__contrastCheckValue()
-        # self.__showReault()
+        self.__showReault()
         # self.__removeFile()
 
 
-    #相关的信息摘要算法
-    def __mdavMD5(self, path):
-        md5file = open(path, 'rb')
-        md5 = hashlib.md5(md5file.read()).hexdigest()
-        md5file.close()
-        logger.log.info(md5)
-        return md5
-
-    def __mdavSHA1(self, path):
-        sha1file = open(path, 'rb')
-        sha1 = hashlib.sha1(sha1file.read()).hexdigest()
-        sha1file.close()
-        logger.log.info(sha1)
-        return sha1
-
-    def __mdavSHA128(self, path):
-        sha1file = open(path, 'rb')
-        sha128 = hashlib.shake_128(sha1file.read()).hexdigest()
-        sha1file.close()
-        logger.log.info(sha128)
-        return sha128
-
-    def _mdavSHA256(self,path):
-        sha1file = open(path, 'rb')
-        sha256 = hashlib.sha_256(sha1file.read()).hexdigest()
-        sha1file.close()
-        logger.log.info(sha256)
-        return sha256
+    #获取当前系统信息
+    def __getPlatform(self):
 
 
-    def __mdavSHA512(self, path):
-        sha512file = open(path, 'rb')
-        sha512 = hashlib.sha512(sha512file.read()).hexdigest()
-        sha512file.close()
-        logger.log.info(sha512)
-        return sha512
+        if sys.platform.startswith('linux'):
+            current_os="Linux"
+        elif sys.platform.startswith('win'):
+            current_os="Windows"
+        elif sys.platform.startswith('darwin'):
+            current_os = "MAC"
+        else:
+            current_os = str(sys.platform)
+        return current_os
+
+#import sys
+    # if sys.platform.startswith('linux'):
+    #     print('当前系统为 Linux')
+    # elif sys.platform.startswith('win'):
+    #     print('当前系统为 Windows')
+    # elif sys.platform.startswith('darwin'):
+    #     print('当前系统为 macOS')
+    # else:
+    #     print('无法识别当前系统')
 
     def __getSearchHeavyPaths(self):#获取需要进行查重的文件夹目录
         self.searchHeavyPaths.add("D:\\360Download\\仓鼠管家\\")
+        # self.searchHeavyPaths.add("I:\\")
+        # self.searchHeavyPaths.add("J:\\")
+        # self.searchHeavyPaths.add("K:\\")
+        # self.searchHeavyPaths.add("L:\\")
         # self.searchHeavyPaths.add("V:\\")
         # self.searchHeavyPaths.add("W:\\")
         # self.searchHeavyPaths.add("X:\\")
@@ -193,6 +229,10 @@ class FileChecking():
         # self.searchHeavyPaths.add("I:\\done")
         # self.searchHeavyPaths.add("J:\\done")
         # self.searchHeavyPaths.add("K:\\done")
+
+    def __cleartables(self):
+        FileDetailModelDao.truncatetables(FileDetailModel.FileDetailModel.__tablename__)
+        FileDetailModelDao.truncatetables(FileDetailModelDup.FileDetailModelDup.__tablename__)
 
 
 
