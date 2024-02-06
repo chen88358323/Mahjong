@@ -95,7 +95,7 @@ class FileChecking():
                     #code=self.__mdavMD5HighPerform(fullfilepath)
                     #头尾计算md5
                     code=encryutil.calc_file_hash(fullfilepath)
-
+                    filesize=round(os.path.getsize(fullfilepath)/encryutil.msize,4)
                     if os.path.isfile(fullfilepath):
                         isDir=0
                     else:
@@ -104,7 +104,7 @@ class FileChecking():
                     filedir = dirpath.replace(driver, '')
                     obj=FileDetailModel.FileDetailModel(hcode=code,isdir=isDir,path=filedir,filename=filename,
                                         filetype=portion[1],systemdriver=driver,platformscan=platformscan,
-                                                        keyword=None,belong=None)
+                                                        keyword=None,belong=None,filesize=filesize)
                     fileObjList.append(obj)
                     fileCodeSet.add(code)
                     i+=1

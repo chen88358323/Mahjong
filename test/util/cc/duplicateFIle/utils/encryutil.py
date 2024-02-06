@@ -22,7 +22,8 @@ def getMethodTime(f):
         s_time = time.time()
         res = f(*arg, **kwarg)
         e_time = time.time()
-        print('耗时：{}秒'.format(e_time - s_time))
+        costtime = e_time - s_time
+        print('方法{}耗时：{}秒'.format(f.__name__,costtime))
         return res
 
     return inner

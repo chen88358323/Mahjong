@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import datetime
 from test.util.cc.duplicateFIle.model.Datasetup import Base
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime,Float
 # # 绑定引擎
 # Session = sessionmaker(bind=engine)
 # # 创建数据库链接池，直接使用session即可为当前线程拿出一个链接对象conn
@@ -20,6 +20,7 @@ class FileDetailModel(Base):
     keyword = Column(String(200))
     systemdriver=Column(String(50))
     platformscan = Column(String(10))
+    filesize =Column(Float,default=0.0000)
 
 
     creattime= Column(DateTime, default=datetime.datetime.now, comment="扫描文件时间")
@@ -31,13 +32,13 @@ class FileDetailModel(Base):
         return f"object : <id:{self.id} hcode:{self.hcode} isdir:{self.isdir}  " \
                f"path:{self.path} filename:{self.filename} filetype:{self.filetype} " \
                f"belong:{self.belong} keyword:{self.keyword} systemdriver:{self.systemdriver} " \
-               f"platformscan:{self.platformscan}  " \
+               f"platformscan:{self.platformscan}  filesize:{self.filesize}" \
                f"creattime:{self.creattime} modifiedtime:{self.modifiedtime}>"
         # 初始化中给对象属性赋值
 
     def __init__(self, hcode, isdir, path, filename, filetype,
                  systemdriver, platformscan,
-                 keyword, belong):
+                 keyword, belong,filesize):
         self.hcode = hcode
         self.isdir = isdir
         self.path = path
@@ -47,6 +48,7 @@ class FileDetailModel(Base):
         self.platformscan = platformscan
         self.keyword = keyword
         self.belong = belong
+        self.filesize=filesize
         # if creattime is None:
         #     self.creattime=datetime.datetime.now
         # else:

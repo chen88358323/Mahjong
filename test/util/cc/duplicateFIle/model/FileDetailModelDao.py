@@ -68,7 +68,7 @@ def truncatetables(tablename):
 
 
 def addBatch(list):#todo 唯一性失败，优化细分
-    logger.log.info("add batch "+str(len(list)))
+    # logger.log.info("add batch "+str(len(list)))
     filedetailmodeList=iter(list)
     se=Session()
     try:
@@ -89,17 +89,22 @@ def addBatch(list):#todo 唯一性失败，优化细分
 def convert2FileDetailModelDup(fileDetailModel):
     dupobj = FileDetailModelDup(fileDetailModel.hcode, fileDetailModel.isdir,
                                 fileDetailModel.path, fileDetailModel.filename, fileDetailModel.filetype,
-                                fileDetailModel.systemdriver,fileDetailModel.platformscan,None,None)
+                                fileDetailModel.systemdriver,fileDetailModel.platformscan,None,None,fileDetailModel.filesize)
     return dupobj
 
-
-#批量插入会有重复数据，需要进行清理
-def clearDuplicatRecorders(filedetailmodeList):
+#select  where  hcode in
+@strutil.getDbTime
+def queryFileDetailModelInHcode(filedetailmodeList):
     hashs = []
     for filedetails in filedetailmodeList:
         hashs.append(filedetails.hcode)
     with Session() as se:
-        rows=se.query(FileDetailModel).filter(FileDetailModel.hcode.in_(hashs)).all()
+        rows = se.query(FileDetailModel).filter(FileDetailModel.hcode.in_(hashs)).all()
+    return  rows,hashs
+
+#批量插入会有重复数据，需要进行清理
+def clearDuplicatRecorders(filedetailmodeList):
+    rows,hashs=queryFileDetailModelInHcode(filedetailmodeList)
         # [Shoe.query.filter_by(id=id).one() for id in my_list_of_ids]
         # res=[row.to_dict() for row in rows]
     if rows is not None and len(rows)>0:#获取hcode重复数据
