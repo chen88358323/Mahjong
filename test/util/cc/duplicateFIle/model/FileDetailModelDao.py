@@ -77,7 +77,7 @@ def addBatch(list):#todo 唯一性失败，优化细分
     except SQLAlchemyError as e:
         print('SQLAlchemyError '+str(e))
         se.rollback()
-        clearDuplicatRecorders(filedetailmodeList)
+        clearDuplicatRecorders(list)
     except	IntegrityError as e:
         print('IntegrityError ' + str(e))
         se.rollback()
@@ -112,7 +112,7 @@ def clearDuplicatRecorders(filedetailmodeList):
             removefd=filedetailmodeList.pop(idx)#FileDetailModel对象需要转化为FileDetailModelDup对象
 
             dbpath=dbrecoder.systemdriver+dbrecoder.path+dbrecoder.filename
-            removedpath=removedpath.systemdriver+removedpath.path+removedpath.filename
+            removedpath=removefd.systemdriver+removefd.path+removefd.filename
             if dbpath!=removedpath:
                 dupobj = convert2FileDetailModelDup(removefd)
                 duplist.append(dupobj)

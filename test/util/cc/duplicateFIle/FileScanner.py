@@ -7,7 +7,7 @@ from test.util.cc.duplicateFIle.utils import  encryutil
 videoType = ['.avi', '.mp4', '.ts', '.flv', '.rmvb', '.rm']
 #批量文件处理个数
 platform='windows'
-batchsize=500
+batchsize=5
 
 class FileChecking():
     def __init__(self):
@@ -49,14 +49,18 @@ class FileChecking():
                     fileCodeSet.remove(fileobj.hcode)
                     tarlist.append(fileobj)
             dulicatelist= list(set(fileObjList)-set(tarlist))
-            if(len(dulicatelist))>0:
 
-                logger.log.error("上传数据集存在重复数据")
+            if(dulicatelist is not None and len(dulicatelist))>0:
+
+                logger.log.error("上传数据集存在重复数据"+str(len(dulicatelist)))
                 for fileobj in dulicatelist:
                     fileobjdup=FileDetailModelDao.convert2FileDetailModelDup(fileobj)
                     duplist.append(fileobjdup)
-                    FileDetailModelDao.addBatch(duplist)
-                    duplist.clear()
+
+                FileDetailModelDao.addBatch(duplist)
+                duplist.clear()
+                dulicatelist.clear()
+
             fileObjList=tarlist
 
         return fileObjList
@@ -81,7 +85,7 @@ class FileChecking():
             for filename in filenames:
                 if i==batchsize:#满足条件批量插入
                     i=0
-                    self.__batchAndClear(fileObjList,fileCodeSet)
+                    fileObjList=self.__batchAndClear(fileObjList,fileCodeSet)
 
                 portion = os.path.splitext(filename)
                 if portion[1] in videoType:
@@ -104,8 +108,8 @@ class FileChecking():
                     fileObjList.append(obj)
                     fileCodeSet.add(code)
                     i+=1
-        #
-        self.__batchAndClear(fileObjList,fileCodeSet)
+            #
+            self.__batchAndClear(fileObjList,fileCodeSet)
 
     #fileObjList  FileDetailModel 集合
     #fileCodeSet  hcode set ，放置提交的一批次数据中含有重复内容
@@ -113,8 +117,9 @@ class FileChecking():
         if (fileObjList is not None and len(fileObjList) > 0):
             fileObjList = self.__clearFileObjList(fileObjList, fileCodeSet)
             FileDetailModelDao.addBatch(fileObjList)
-            fileObjList.clear()
+            # fileObjList.clear()
             fileCodeSet.clear()
+        return fileObjList
 
 
     def __findAllFileTree(self):#查找每一个待查重的文件的所有的子文件
@@ -165,8 +170,8 @@ class FileChecking():
                         logger.log.warning("dupfile:"+(dupfile.systemdriver+dupfile.path+dupfile.filename))
                         logger.log.warning("                             ")
             else:
-                logger.log.warn("*******************************************")
-                logger.log.warn("filedetail_dup 无数据")
+                logger.log.warning("*******************************************")
+                logger.log.warning("filedetail_dup 无数据")
 
             #3. todo 迁移文件至缓存文件夹
         else:
@@ -222,6 +227,8 @@ class FileChecking():
 
     def __getSearchHeavyPaths(self):#获取需要进行查重的文件夹目录
         self.searchHeavyPaths.add("D:\\360Download\\仓鼠管家\\")
+        #self.searchHeavyPaths.add("K:\\spj\\spj\\")
+        #self.searchHeavyPaths.add("J:\\\\榨汁夏\\")
         # self.searchHeavyPaths.add("I:\\")
         # self.searchHeavyPaths.add("J:\\")
         # self.searchHeavyPaths.add("K:\\")
