@@ -10,6 +10,7 @@ __pycharm__/
 *.sqlite3
 media/
 
+*.log
 # database migrations
 */migrations/*.py
 !*/migrations/__init__.py

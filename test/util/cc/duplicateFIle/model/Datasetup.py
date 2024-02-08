@@ -2,7 +2,16 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.pool import QueuePool
-engine = create_engine("mysql+pymysql://root:111111@localhost/torr")
+from test.util.cc.duplicateFIle.Conf import  Conf
+
+
+
+config= Conf()
+engine = create_engine("mysql+pymysql://"+
+                       config.readDbConf( "db_user")+":"
+                       +config.readDbConf( "db_pass")
+                       +"@"+config.readDbConf( "db_host")+":"+
+                       config.readDbConf( "db_port")+"/"+config.readDbConf( "db_dabase"))
     # ,
     # encoding='utf8',
     # # 超过链接池大小外最多创建的链接
