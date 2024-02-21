@@ -69,8 +69,11 @@ class FileChecking():
 
         return fileObjList
 
-    def __getdriver(self,path):
-        driver, rem = os.path.splitdrive(path)
+    def __getdriver(self,path,platform):
+        if(platform=='Windows'):
+            driver, rem = os.path.splitdrive(path)
+        else:
+            driver=path
         return  driver
 
     # 判断是否是扫描文件
@@ -87,9 +90,10 @@ class FileChecking():
         fileObjList=[]
         fileCodeSet=set()
 
+        platformscan = self.__getPlatform()
         # dirver为盘符路径  C:\Users\wuyanzu\  获取盘符为c:
-        driver=self.__getdriver(path)
-        platformscan=self.__getPlatform()
+        driver=self.__getdriver(path,platformscan)
+
 
         for dirpath, dirnames, filenames in os.walk(path):
             i=0
@@ -242,20 +246,20 @@ class FileChecking():
 
     def __getSearchHeavyPaths(self):#获取需要进行查重的文件夹目录
         #本地测试
-        self.searchHeavyPaths.add("D:\\360Download\\仓鼠管家\\")
+        # self.searchHeavyPaths.add("D:\\360Download\\仓鼠管家\\")
         #self.searchHeavyPaths.add("K:\\spj\\spj\\")
         #self.searchHeavyPaths.add("J:\\\\榨汁夏\\")
         # self.searchHeavyPaths.add("I:\\")
 
         ##########linux  /home/cc/code/python/test/util/cc/duplicateFIle
 
-        # self.searchHeavyPaths.add("//media//cc//MOIVESOFT//")
-        # self.searchHeavyPaths.add("//media//cc//PJYP//")
-        # self.searchHeavyPaths.add("//media//cc//ZP//")
-        # self.searchHeavyPaths.add("//media//cc//娱乐//")
-        # self.searchHeavyPaths.add("//media//cc//文档//")
-        # self.searchHeavyPaths.add("//media//cc//系统//")
-        # self.searchHeavyPaths.add("//media//cc//软件//")
+        self.searchHeavyPaths.add("/media/cc/MOIVESOFT/")
+        self.searchHeavyPaths.add("/media/cc/PJYP/")
+        self.searchHeavyPaths.add("/media/cc/ZP/")
+        self.searchHeavyPaths.add("/media/cc/娱乐/")
+        self.searchHeavyPaths.add("/media/cc/文档/")
+        self.searchHeavyPaths.add("/media/cc/系统/")
+        self.searchHeavyPaths.add("/media/cc/软件/")
         ##########linux
         # self.searchHeavyPaths.add("J:\\")
         # self.searchHeavyPaths.add("K:\\")
