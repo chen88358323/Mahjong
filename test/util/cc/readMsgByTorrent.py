@@ -482,11 +482,33 @@ def compareTorfile(tar,res):
 
 
 
+def findTorrentByHashcode(srctorrpath,tartorrpath):
+    txt = log(tartorrpath, 'findTorrentByHashcode',False)
+    tarlist=[]
+    #遍历待查找的种子，生成集合
+    for i in len(tarlist):
+        tarlist[i]=tarlist[i].lower()
+    txt.writelines("************************待查找************  " + '\r\n')
+
+    for dirpath, dirnames, filenames in os.walk(srctorrpath):
+        for filename in filenames:
+            portion = os.path.splitext(filename)
+            if portion[1] == ".torrent":
+                srctorrpath = os.path.join(dirpath, filename)
+                srctorrent = Torrent.from_file(srctorrpath)
+                srccode=srctorrent.info_hash.lower()
+                if srccode in tarlist:
+                    txt.writelines("hashcode  " + srccode + '\r\n')
+                    txt.writelines("dirpath  " + dirpath + '\r\n')
+                    txt.writelines("filename  " + filename + '\r\n')
+
+
+    txt.close()
 
 #srctorrpath  种子集散地
 # tartorrpath  待查找种子
-def findTorrentByHashcode(srctorrpath,tartorrpath):
-    txt = log(tartorrpath, 'findTorrentByHashcode',False)
+def findTorrentByHashcodeInDir(srctorrpath,tartorrpath):
+    txt = log(tartorrpath, 'findTorrentByHashcodeInDir',False)
     tarlist=[]
     #遍历待查找的种子，生成集合
     txt.writelines("************************待查找************  " + '\r\n')
@@ -509,7 +531,16 @@ def findTorrentByHashcode(srctorrpath,tartorrpath):
             portion = os.path.splitext(filename)
             if portion[1] == ".torrent":
                 srctorrpath = os.path.join(dirpath, filename)
-                srctorrent = Torrent.from_file(srctorrpath)
+                try:
+                    srctorrent = Torrent.from_file(srctorrpath)
+                except BencodeDecodingError:
+                    # 种子下载失败了
+                    print('error file ' + srctorrpath)
+                    continue
+                except IndexError:
+                    print('error file ' + srctorrpath)
+                    continue
+
                 srccode=srctorrent.info_hash.lower()
                 if srccode in tarlist:
                     txt.writelines("hashcode  " + srccode + '\r\n')
@@ -534,7 +565,7 @@ def log(filepath, name,append):
     else:
         txtfile = open(txtpath, 'w', encoding='utf-8')
     return txtfile
-#根据路径名扫描入库
+#根据路径名扫描入库,判断种子是否重复
 def scanTorrentsIntoDB(torrDir):
     p1 = threading.Thread(target=getTorListByDir, args=(torrDir,))
 
@@ -766,7 +797,9 @@ if __name__ == '__main__':
     #test()
     #clearXunleiFile("D:\\temp\\")
    # print('C5AEA8F99A520790D421FEB7162DDF7A77BD297B'.lower())
-    #scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\b22\\")
+
+    findTorrentByHashcodeInDir("D:\\temp\\0555\\2022-03-01\\","D:\\temp\\backup\\find\\")
+    # scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\b25\\")
     #scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\normal\\")
     #countHalfFiles('D:\\temp\\chachong\\193-性感美女顶级调教 狂操捆绑 强制高潮 爆菊 滴蜡 K9训犬 群P毒龙 乱交露出\\')
     # genhalfTorrent('D:\\temp\\chachong\\')
@@ -779,8 +812,8 @@ if __name__ == '__main__':
     # removeFiles('g:\\')
     # removeFiles('h:\\')
 
-    removeFiles('E:\\PDF\\')
-    removeFiles('G:\\CC\\BOOKS\\')
+   # removeFiles('E:\\PDF\\')
+    #removeFiles('G:\\CC\\BOOKS\\')
 
     #scanTorrentsIntoDB("C:\\Users\\Administrator\\Downloads\\best\\")
 

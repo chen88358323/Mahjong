@@ -1,13 +1,17 @@
 import datetime
 
 import os,sys,platform
-from test.util.cc.duplicateFIle.model import FileDetailModelDao,FileDetailModel,FileDetailModelDup
-from test.util.cc.duplicateFIle import logger
-from test.util.cc.duplicateFIle.utils import  encryutil
-videoType = ['.avi', '.mp4', '.ts', '.flv', '.rmvb', '.rm']
+from model import FileDetailModelDao,FileDetailModel,FileDetailModelDup
+from utils import logger,encryutil
+
+
+osseparator=os.path.sep
+
+videoType = ['.avi', '.mp4', '.ts', '.flv','.mkv','.mov', '.rmvb', '.rm', '.mpeg', '.wmv']
 #批量文件处理个数
-platform='windows'
 batchsize=5
+current_os='windows'
+# platform='windows'
 
 class FileChecking():
     def __init__(self):
@@ -69,6 +73,13 @@ class FileChecking():
         driver, rem = os.path.splitdrive(path)
         return  driver
 
+    # 判断是否是扫描文件
+    def __isScanFile(self,filesuffix):
+        return True
+        # if (filesuffix in videoType):
+        #     return  True
+        # else:
+        #     return  False
     # def filterUselessFile(filename):
     #path  获取需要对比的文件完整路径
     #
@@ -88,7 +99,7 @@ class FileChecking():
                     fileObjList=self.__batchAndClear(fileObjList,fileCodeSet)
 
                 portion = os.path.splitext(filename)
-                if portion[1] in videoType:
+                if self.__isScanFile(portion[1]):
                     fullfilepath = os.path.join(dirpath, filename)
 
                     # DBModule.add
@@ -181,6 +192,10 @@ class FileChecking():
 
     #主流程
     def __main(self):
+        # self.__contrastCheckValue()
+        # self.__showReault()
+        # self.__exchange()#清理数据，将
+        # os._exit(0)
         path = input()
         print("清理表数据请输入y,拒绝请按其他键")
         if path == "y":
@@ -193,12 +208,12 @@ class FileChecking():
         # 2.开始扫描入库
         self.__findAllFileTree()
         # 3.数据比较
-
+        self.__showReault()
         #es
         #写文件
         # self.__contrastCheckValue()
         self.__showReault()
-        # self.__removeFile()
+
 
 
     #获取当前系统信息
@@ -226,24 +241,54 @@ class FileChecking():
     #     print('无法识别当前系统')
 
     def __getSearchHeavyPaths(self):#获取需要进行查重的文件夹目录
+        #本地测试
         self.searchHeavyPaths.add("D:\\360Download\\仓鼠管家\\")
         #self.searchHeavyPaths.add("K:\\spj\\spj\\")
         #self.searchHeavyPaths.add("J:\\\\榨汁夏\\")
         # self.searchHeavyPaths.add("I:\\")
+
+        ##########linux  /home/cc/code/python/test/util/cc/duplicateFIle
+
+        # self.searchHeavyPaths.add("//media//cc//MOIVESOFT//")
+        # self.searchHeavyPaths.add("//media//cc//PJYP//")
+        # self.searchHeavyPaths.add("//media//cc//ZP//")
+        # self.searchHeavyPaths.add("//media//cc//娱乐//")
+        # self.searchHeavyPaths.add("//media//cc//文档//")
+        # self.searchHeavyPaths.add("//media//cc//系统//")
+        # self.searchHeavyPaths.add("//media//cc//软件//")
+        ##########linux
         # self.searchHeavyPaths.add("J:\\")
         # self.searchHeavyPaths.add("K:\\")
         # self.searchHeavyPaths.add("L:\\")
         # self.searchHeavyPaths.add("V:\\")
         # self.searchHeavyPaths.add("W:\\")
         # self.searchHeavyPaths.add("X:\\")
-        # self.searchHeavyPaths.add("H:\\done")
-        # self.searchHeavyPaths.add("I:\\done")
-        # self.searchHeavyPaths.add("J:\\done")
-        # self.searchHeavyPaths.add("K:\\done")
+        # self.searchHeavyPaths.add("F:\\")
+        # self.searchHeavyPaths.add("G:\\")
+        # self.searchHeavyPaths.add("H:\\")
+        # self.searchHeavyPaths.add("I:\\")
+        # self.searchHeavyPaths.add("J:\\")
+        # self.searchHeavyPaths.add("K:\\")
 
     def __cleartables(self):
         FileDetailModelDao.truncatetables(FileDetailModel.FileDetailModel.__tablename__)
         FileDetailModelDao.truncatetables(FileDetailModelDup.FileDetailModelDup.__tablename__)
+
+    #清理数据，将dup表数据迁移至原表中，dup表该数据进行删除
+    def __exchange(self):
+        hcodelist=[]
+        #1.读取文件hcode
+        with open('hcode.txt','r',encoding="UTF-8") as file:
+            content=file.readline().replace(" ","")
+            content = content.replace("/n", "")
+            hcodelist.append(content)
+            print("hcode "+content)
+        #2.获取两边信息
+        for code in hcodelist:
+            # 3.convert存储,删除
+            file    = FileDetailModelDao.updateFileBycode(code)
+            dupfile = FileDetailModelDao.querydupfilebycode(code)
+            FileDetailModelDao.delDupFileByID(dupfile.id,dupfile.hcode)
 
 
 

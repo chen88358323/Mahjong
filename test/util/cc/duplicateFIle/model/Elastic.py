@@ -3,13 +3,13 @@
 Created by Pierluigi on 2020-02-03
 project: elasticizefiles
 """
-
+from test.util.cc.duplicateFIle.Conf import  Conf
 import logging
 import math
 
 import elasticsearch as Elasticsearch
 
-
+config= Conf()
 class Elastic(object):
     """ A wrapper to ElasticSearch
 

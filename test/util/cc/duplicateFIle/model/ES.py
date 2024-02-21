@@ -1,10 +1,12 @@
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
 import logging
+from test.util.cc.duplicateFIle.Conf import  Conf
 
+config= Conf()
 ES_CONFIG = {
-    "hosts": ["127.0.0.1"],
-    "http_auth": ["elasticuser", "123***4"],
+    "hosts": [config.readEsConf("es_address")],
+    "http_auth": [config.readEsConf("es_user"),config.readEsConf("es_passwd")],
     "sniff_on_start": False,
     "sniff_on_connection_fail": True,
     "sniffer_timeout": 180,
@@ -13,7 +15,9 @@ ES_CONFIG = {
 
 ES_CLIENT = Elasticsearch(**ES_CONFIG)
 
-
+def test(es):
+    resp=es.info()
+    print(resp)
 def worker(es, actions, chunk_size=3000, max_chunk_bytes=100 * 1024 * 1024):
     try:
         success, _ = bulk(es, actions=actions, chunk_size=chunk_size, max_chunk_bytes=max_chunk_bytes,
@@ -34,16 +38,16 @@ def do_scroll(es, index, body):
 
 
 if __name__ == '__main__':
-
-    index = "flink-test"
-    search_body = {
-        "query": {
-            "match_all": {}
-        }
-    }
-
-    res = ES_CLIENT.search(index=index, body=search_body)
-    res_scroll = do_scroll(ES_CLIENT, index, search_body)
-    print(res_scroll)
-    for item in res_scroll:
-        print(item)
+    test(ES_CLIENT)
+    # index = "flink-test"
+    # search_body = {
+    #     "query": {
+    #         "match_all": {}
+    #     }
+    # }
+    #
+    # res = ES_CLIENT.search(index=index, body=search_body)
+    # res_scroll = do_scroll(ES_CLIENT, index, search_body)
+    # print(res_scroll)
+    # for item in res_scroll:
+    #     print(item)

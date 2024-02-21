@@ -1,17 +1,23 @@
 # -*- coding: utf-8 -*-
 
-from test.util.cc.duplicateFIle.model.Datasetup import engine ,Base
+from test.util.cc.duplicateFIle.model.Datasetup import engine
 from test.util.cc.duplicateFIle.model.FileDetailModel import FileDetailModel
 from test.util.cc.duplicateFIle.model.FileDetailModelDup import FileDetailModelDup
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import func
+
 from sqlalchemy.exc import SQLAlchemyError,IntegrityError
-from test.util.cc.duplicateFIle import logger
-from test.util.cc.duplicateFIle.utils import  strutil
+from test.util.cc.duplicateFIle.utils import strutil, logger
 from sqlalchemy.sql import text
+import  datetime,os
+
+# import sqlalchemy
+# print(sqlalchemy.__version__)
+osseparator=os.path.sep
 # # 创建数据库链接池，直接使用session即可为当前线程拿出一个链接对象conn
 # # 内部会采用threading.local进行隔离
 # session = scoped_session(Session)
+
 
 
 # # 绑定引擎
@@ -35,6 +41,42 @@ def queryfilebycode(hcode :str ):
 
     return file
 
+def updateFileBycode(hcode:str):
+    with Session() as se:
+        file=se.query(FileDetailModel).filter(FileDetailModel.hcode == hcode).first()
+        logger.log.info("update before " + str(file))
+        dupfile=se.query(FileDetailModelDup).filter(FileDetailModelDup.hcode == hcode).first()
+        file=convertDupFile2File(file,dupfile)
+        logger.log.info("update after " + str(file))
+        se.commit()
+# def delDupFileByID(id:str,hcode:str):
+#     with Session as session:
+#         logger.log.info("delete   done  id:" + id+" hcode:"+hcode)
+#         session.query(FileDetailModelDup).filter(FileDetailModelDup.id == id ,
+#                                             FileDetailModelDup.hcode==hcode)\
+#             .first().delete()
+#         session.commit()
+def delDupFileByID(id:str,hcode:str):
+    logger.log.info("delete   done  id:" + str(id) + " hcode:" + hcode)
+    with Session() as session:
+        dupfile=session.query(FileDetailModelDup).filter(FileDetailModelDup.id == id ,
+                                            FileDetailModelDup.hcode==hcode).first()
+        if(dupfile == None):
+            logger.log.info("delDupFileByID   not exist  " + id + "  " + hcode)
+            return None
+        else:
+            logger.log.info("delete   done  " + str(dupfile))
+            session.delete(dupfile)
+            session.commit()
+
+
+def querydupfilebycode(hcode :str ):
+    # Create a session to interact with the database
+    with Session() as session:
+        # filelist=session.query(FileDetailModel).filter_by(FileDetailModel.hcode==hcode,FileDetailModel.filetype==filename).all()
+        file = session.query(FileDetailModelDup).filter(FileDetailModelDup.hcode == hcode).first()
+
+    return file
 #获取数量
 def querydupfileCounts():
     num=0
@@ -64,7 +106,7 @@ def truncatetables(tablename):
     with Session() as session:
         # filelist=session.query(FileDetailModel).filter_by(FileDetailModel.hcode==hcode,FileDetailModel.filetype==filename).all()
         filelist = session.execute(text(sql))
-        logger.log.info("sql "+sql+" is done")
+        logger.log.info("sql " + sql + " is done")
 
 
 def addBatch(list):#todo 唯一性失败，优化细分
@@ -102,6 +144,19 @@ def queryFileDetailModelInHcode(filedetailmodeList):
         rows = se.query(FileDetailModel).filter(FileDetailModel.hcode.in_(hashs)).all()
     return  rows,hashs
 
+
+def convertDupFile2File(file,dupfile):
+    file.path=dupfile.path
+    file.filename=dupfile.filename
+    file.filetype=dupfile.filetype
+    file.systemdriver=dupfile.systemdriver
+    file.platformscan=dupfile.platformscan
+    file.filesize=dupfile.filesize
+    file.creattime=dupfile.creattime
+    file.modifiedtime=datetime.datetime.now()
+    return file
+
+
 #批量插入会有重复数据，需要进行清理
 def clearDuplicatRecorders(filedetailmodeList):
     rows,hashs=queryFileDetailModelInHcode(filedetailmodeList)
@@ -111,7 +166,7 @@ def clearDuplicatRecorders(filedetailmodeList):
         logger.log.info("数据插入中，该批次存在重复数据")
         duplist=[]
         for dbrecoder in rows:
-            logger.log.error("dulicate dbrecoder  hcode:"+dbrecoder.hcode+'  filename'+dbrecoder.filename)
+            logger.log.error("dulicate dbrecoder  hcode:" + dbrecoder.hcode + '  filename' + dbrecoder.filename)
             idx=hashs.index(dbrecoder.hcode)
             hashs.pop(idx)
             removefd=filedetailmodeList.pop(idx)#FileDetailModel对象需要转化为FileDetailModelDup对象
@@ -121,15 +176,16 @@ def clearDuplicatRecorders(filedetailmodeList):
             if dbpath!=removedpath:
                 dupobj = convert2FileDetailModelDup(removefd)
                 duplist.append(dupobj)
-                logger.log.error("dbrecoder hcode:" + dbrecoder.hcode + '  filename:' + strutil.clearpath(dbrecoder.filename))
-                logger.log.error("scanfile  hcode:" + removefd.hcode + '  filename' + strutil.clearpath(removefd.filename))
+                logger.log.error("dbrecoder hcode:" + dbrecoder.hcode)
+                logger.log.error("dbrecoder " + '  filename:' + dbrecoder.systemdriver + dbrecoder.path + osseparator + strutil.clearpath(dbrecoder.filename))
+                logger.log.error("scanfile  " + '  filename:' + removefd.systemdriver + removefd.path + osseparator + strutil.clearpath(removefd.filename))
             #TODO 将重复数据装入torr-dupilicate表
         if(duplist is not None and len(duplist)>0):
-            logger.log.info("重复数据更新至filedetail_dup表中，数量"+str(len(duplist)))
+            logger.log.info("重复数据更新至filedetail_dup表中，数量" + str(len(duplist)))
             addBatch(duplist)
             duplist.clear()
         if(filedetailmodeList is not None and len(filedetailmodeList)>0):#清理后还有待插入项
-            logger.log.info("去重后该批次数据 "+str(len(filedetailmodeList)))
+            logger.log.info("去重后该批次数据 " + str(len(filedetailmodeList)))
             addBatch(filedetailmodeList)
             filedetailmodeList.clear()
         else:

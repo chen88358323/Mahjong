@@ -9,6 +9,7 @@ from sqlalchemy import Column, Integer, String, DateTime,Index,Float
 # session = scoped_session(Session)
 
 class FileDetailModelDup(Base):
+    __table_args__ = {"extend_existing": True}  # < new
     __tablename__ = 'filedetails_dup'  # 表名
     id = Column(Integer, primary_key=True)
     hcode = Column(String(50))

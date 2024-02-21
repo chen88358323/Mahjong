@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 """文件计算唯一标识"""
 import hashlib
-from test.util.cc.duplicateFIle import logger
+from test.util.cc.duplicateFIle.utils import logger
 import os,time,mmap
 # 相关的信息摘要算法
 #显示文件单位 300M
@@ -57,7 +57,7 @@ def calc_file_hash(filename):
             with mmap.mmap(f.fileno(),0,access=mmap.ACCESS_READ) as mmapfile:
                 md5hasher.update(mmapfile)
                 hcode=md5hasher.hexdigest()
-                logger.log.info(hcode + '   ' + str(round(size/msize, 2)) + 'Mb     ' + filename)
+                logger.log.info(hcode + '   ' + str(round(size / msize, 2)) + 'Mb     ' + filename)
                 return md5hasher.hexdigest()
     else:
         with open(filename, 'rb') as f:
@@ -66,7 +66,7 @@ def calc_file_hash(filename):
             f.seek(size - big_file_read_size)
             md5hasher.update(f.read(big_file_read_size))
             hcode = md5hasher.hexdigest()
-            logger.log.info(hcode + '   ' + str(round(size/msize, 2)) + 'Mb     ' + filename)
+            logger.log.info(hcode + '   ' + str(round(size / msize, 2)) + 'Mb     ' + filename)
             return hcode
 @getMethodTime
 def calculate_md5_high_performance(file_path):

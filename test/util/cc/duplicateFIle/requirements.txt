@@ -1,4 +1,5 @@
 #cd D:\CODE\github\mahjong\python-mahjong\test\util\cc\duplicateFIle
-#pipreqs ./ --encoding=utf8
-elasticsearch==8.12.0
+#pipreqs ./ --encoding=utf8 --force
+elasticsearch==7.17.3
+jsonpickle==3.0.2
 SQLAlchemy==2.0.25

@@ -33,6 +33,11 @@ class Conf:
         val=self.conf.get('mysqldb',name)
         # print("key "+name +" val  "+val)
         return  val
+    def readEsConf(self,name):
+        val=self.conf.get('elasticsearch',name)
+        # print("key "+name +" val  "+val)
+        return  val
+
 
     def get_items(self, m, n):
         print(f"5、获取sectoion:{m}下的配置信息为：{self.conf.items(m)}")
