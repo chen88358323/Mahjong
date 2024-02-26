@@ -1,12 +1,9 @@
 from elasticsearch import Elasticsearch
-from elasticsearch.helpers import bulk, scan
-import logging
-import jsonpickle
+from elasticsearch.helpers import bulk
 import json
 # import urllib3
 # urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 from test.util.cc.duplicateFIle.Conf import  Conf
-import ssl
 
 from test.util.cc.duplicateFIle.model import AlchemyEncoder
 

@@ -1,6 +1,6 @@
 import datetime
 
-import os,sys,platform
+import os,sys
 from model import FileDetailModelDao,FileDetailModel,FileDetailModelDup
 from utils import logger,encryutil
 
@@ -8,6 +8,8 @@ from utils import logger,encryutil
 osseparator=os.path.sep
 
 videoType = ['.avi', '.mp4', '.ts', '.flv','.mkv','.mov', '.rmvb', '.rm', '.mpeg', '.wmv']
+#不扫码的文件夹
+black_dir_list=['$RECYCLE.BIN','System Volume Information']
 #批量文件处理个数
 batchsize=5
 current_os='windows'
@@ -26,7 +28,7 @@ class FileChecking():
         #重命名存储结果的文件
         nowTime = datetime.datetime.now().strftime('%Y%m%d%H%M%S')+".txt"
         self.saveReaultPath+=str(nowTime)
-        logger.log.info(self.saveReaultPath+"初始化完成！")
+        logger.log.info(self.saveReaultPath + "初始化完成！")
 
         #执行主程序
         self.__main()
@@ -56,11 +58,11 @@ class FileChecking():
 
             if(dulicatelist is not None and len(dulicatelist))>0:
 
-                logger.log.error("上传数据集存在重复数据"+str(len(dulicatelist)))
+                logger.log.error("上传数据集存在重复数据" + str(len(dulicatelist)))
                 for fileobj in dulicatelist:
-                    fileobjdup=FileDetailModelDao.convert2FileDetailModelDup(fileobj)
+                    fileobjdup= FileDetailModelDao.convert2FileDetailModelDup(fileobj)
                     duplist.append(fileobjdup)
-
+                #增加重复数据
                 FileDetailModelDao.addBatch(duplist)
                 duplist.clear()
                 dulicatelist.clear()
@@ -76,6 +78,11 @@ class FileChecking():
             driver=path
         return  driver
 
+    def __isScanDir(self,path):
+        for dir in black_dir_list:
+            if(dir in path):
+                return True
+        return False
     # 判断是否是扫描文件
     def __isScanFile(self,filesuffix):
         return True
@@ -96,35 +103,42 @@ class FileChecking():
 
 
         for dirpath, dirnames, filenames in os.walk(path):
-            i=0
-            for filename in filenames:
-                if i==batchsize:#满足条件批量插入
-                    i=0
-                    fileObjList=self.__batchAndClear(fileObjList,fileCodeSet)
+            # print("dirpath"+dirpath)
+            # print("dirnames"+dirnames)
+            if self.__isScanDir(dirpath):
+                continue
+            else:
+                i = 0
+                for filename in filenames:
+                    if i == batchsize:  # 满足条件批量插入
+                        i = 0
+                        fileObjList = self.__batchAndClear(fileObjList, fileCodeSet)
 
-                portion = os.path.splitext(filename)
-                if self.__isScanFile(portion[1]):
-                    fullfilepath = os.path.join(dirpath, filename)
+                    portion = os.path.splitext(filename)
+                    if self.__isScanFile(portion[1]):
+                        fullfilepath = os.path.join(dirpath, filename)
 
-                    # DBModule.add
-                    #code=self.__mdavMD5HighPerform(fullfilepath)
-                    #头尾计算md5
-                    code=encryutil.calc_file_hash(fullfilepath)
-                    filesize=round(os.path.getsize(fullfilepath)/encryutil.msize,4)
-                    if os.path.isfile(fullfilepath):
-                        isDir=0
-                    else:
-                        isDir=1
-                    # dirpath  filename portion[1]
-                    filedir = dirpath.replace(driver, '')
-                    obj=FileDetailModel.FileDetailModel(hcode=code,isdir=isDir,path=filedir,filename=filename,
-                                        filetype=portion[1],systemdriver=driver,platformscan=platformscan,
-                                                        keyword=None,belong=None,filesize=filesize)
-                    fileObjList.append(obj)
-                    fileCodeSet.add(code)
-                    i+=1
-            #
-            self.__batchAndClear(fileObjList,fileCodeSet)
+                        # DBModule.add
+                        # code=self.__mdavMD5HighPerform(fullfilepath)
+
+                         # 头尾计算md5
+                        code ,filesize = encryutil.calc_file_hash(fullfilepath)
+
+                        if os.path.isfile(fullfilepath):
+                            isDir = 0
+                        else:
+                            isDir = 1
+                        # dirpath  filename portion[1]
+                        filedir = dirpath.replace(driver, '')
+                        obj = FileDetailModel.FileDetailModel(hcode=code, isdir=isDir, path=filedir, filename=filename,
+                                                              filetype=portion[1], systemdriver=driver,
+                                                              platformscan=platformscan,
+                                                              keyword=None, belong=None, filesize=filesize)
+                        fileObjList.append(obj)
+                        fileCodeSet.add(code)
+                        i += 1
+                #
+                self.__batchAndClear(fileObjList, fileCodeSet)
 
     #fileObjList  FileDetailModel 集合
     #fileCodeSet  hcode set ，放置提交的一批次数据中含有重复内容
@@ -159,7 +173,7 @@ class FileChecking():
 
     def __saveReault(self,pt):
         logfile='D:\\temp\\dist\\'+self.saveReaultPath
-        logger.log.info('log '+logfile)
+        logger.log.info('log ' + logfile)
         file=open(logfile,"a",encoding='utf-8')
         file.write(pt+"\n")
         file.close()
@@ -167,22 +181,22 @@ class FileChecking():
     #比对两个数据表内的数据
     def __showReault(self):
         dupfilelist=[]
-        num=FileDetailModelDao.querydupfileCounts()
+        num= FileDetailModelDao.querydupfileCounts()
         if(num>0):
             print('show result duplicate num:'+str(num))
             #1.获取重复数据列表
-            dupfilelist=FileDetailModelDao.queryAlldupfiles()
+            dupfilelist= FileDetailModelDao.queryAlldupfiles()
             if dupfilelist is not None and len(dupfilelist)>0:
                 for dupfile in dupfilelist:
                     # 2.查询对应数据原始数据对应列表
-                    file=FileDetailModelDao.queryfilebycode(dupfile.hcode)
+                    file= FileDetailModelDao.queryfilebycode(dupfile.hcode)
                     if file is None:  # 这里好像判断没啥用，不如直接返回
-                        logger.log.info(dupfile.hcode+" 没有对应filedetail表的记录")
+                        logger.log.info(dupfile.hcode + " 没有对应filedetail表的记录")
                     else:
                         logger.log.warning("*******************************************")
-                        logger.log.warning(dupfile.hcode )
-                        logger.log.warning("file   :"+(file.systemdriver+file.path+file.filename))
-                        logger.log.warning("dupfile:"+(dupfile.systemdriver+dupfile.path+dupfile.filename))
+                        logger.log.warning(dupfile.hcode)
+                        logger.log.warning("file   :" + (file.systemdriver + file.path + file.filename))
+                        logger.log.warning("dupfile:" + (dupfile.systemdriver + dupfile.path + dupfile.filename))
                         logger.log.warning("                             ")
             else:
                 logger.log.warning("*******************************************")
@@ -246,20 +260,20 @@ class FileChecking():
 
     def __getSearchHeavyPaths(self):#获取需要进行查重的文件夹目录
         #本地测试
-        # self.searchHeavyPaths.add("D:\\360Download\\仓鼠管家\\")
+        self.searchHeavyPaths.add("D:\\360Download\\仓鼠管家\\")
         #self.searchHeavyPaths.add("K:\\spj\\spj\\")
         #self.searchHeavyPaths.add("J:\\\\榨汁夏\\")
         # self.searchHeavyPaths.add("I:\\")
 
         ##########linux  /home/cc/code/python/test/util/cc/duplicateFIle
 
-        self.searchHeavyPaths.add("/media/cc/MOIVESOFT/")
-        self.searchHeavyPaths.add("/media/cc/PJYP/")
-        self.searchHeavyPaths.add("/media/cc/ZP/")
-        self.searchHeavyPaths.add("/media/cc/娱乐/")
-        self.searchHeavyPaths.add("/media/cc/文档/")
-        self.searchHeavyPaths.add("/media/cc/系统/")
-        self.searchHeavyPaths.add("/media/cc/软件/")
+        # self.searchHeavyPaths.add("/media/cc/MOIVESOFT/")
+        # self.searchHeavyPaths.add("/media/cc/PJYP/")
+        # self.searchHeavyPaths.add("/media/cc/ZP/")
+        # self.searchHeavyPaths.add("/media/cc/娱乐/")
+        # self.searchHeavyPaths.add("/media/cc/文档/")
+        # self.searchHeavyPaths.add("/media/cc/系统/")
+        # self.searchHeavyPaths.add("/media/cc/软件/")
         ##########linux
         # self.searchHeavyPaths.add("J:\\")
         # self.searchHeavyPaths.add("K:\\")
@@ -282,7 +296,7 @@ class FileChecking():
     def __exchange(self):
         hcodelist=[]
         #1.读取文件hcode
-        with open('hcode.txt','r',encoding="UTF-8") as file:
+        with open('hcode.txt', 'r', encoding="UTF-8") as file:
             content=file.readline().replace(" ","")
             content = content.replace("/n", "")
             hcodelist.append(content)
@@ -292,7 +306,7 @@ class FileChecking():
             # 3.convert存储,删除
             file    = FileDetailModelDao.updateFileBycode(code)
             dupfile = FileDetailModelDao.querydupfilebycode(code)
-            FileDetailModelDao.delDupFileByID(dupfile.id,dupfile.hcode)
+            FileDetailModelDao.delDupFileByID(dupfile.id, dupfile.hcode)
 
 
 

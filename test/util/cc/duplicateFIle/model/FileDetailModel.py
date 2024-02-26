@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import datetime
-from test.util.cc.duplicateFIle.model.Datasetup import Base
+from .Datasetup import Base
 from sqlalchemy import Column, Integer, String, DateTime,Float
 # # 绑定引擎
 # Session = sessionmaker(bind=engine)

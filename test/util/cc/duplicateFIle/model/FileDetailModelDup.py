@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import datetime
-from test.util.cc.duplicateFIle.model.Datasetup import engine ,Base
-from sqlalchemy import Column, Integer, String, DateTime,Index,Float
+from .Datasetup import Base
+from sqlalchemy import Column, Integer, String, DateTime, Float
 # # 绑定引擎
 # Session = sessionmaker(bind=engine)
 # # 创建数据库链接池，直接使用session即可为当前线程拿出一个链接对象conn

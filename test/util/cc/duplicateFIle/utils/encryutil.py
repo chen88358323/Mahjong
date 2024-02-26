@@ -45,7 +45,12 @@ def mdavMD5HighPerform( path):
     return md5_hasher.hexdigest()
 @getMethodTime
 def calc_file_hash(filename):
-    size=os.path.getsize(filename)
+    size=os.path.getsize(filename) #文件原本大小
+    fsize = round(size / msize, 4)#格式化后的实际大小
+    fsize =str(fsize)
+    if size==0:
+        logger.log.error("zero file " + filename + ' size:' + str(size))
+        return  '1111111111111111111',fsize
     md5hasher = hashlib.md5()
     ''' 
     Calculate the file hash.
@@ -57,8 +62,8 @@ def calc_file_hash(filename):
             with mmap.mmap(f.fileno(),0,access=mmap.ACCESS_READ) as mmapfile:
                 md5hasher.update(mmapfile)
                 hcode=md5hasher.hexdigest()
-                logger.log.info(hcode + '   ' + str(round(size / msize, 2)) + 'Mb     ' + filename)
-                return md5hasher.hexdigest()
+                logger.log.info(hcode + '   ' + fsize + 'Mb     ' + filename)
+                return md5hasher.hexdigest(),fsize
     else:
         with open(filename, 'rb') as f:
          #偏移量，大于300M的文件，读取前100M以及最后面的100M
@@ -66,8 +71,8 @@ def calc_file_hash(filename):
             f.seek(size - big_file_read_size)
             md5hasher.update(f.read(big_file_read_size))
             hcode = md5hasher.hexdigest()
-            logger.log.info(hcode + '   ' + str(round(size / msize, 2)) + 'Mb     ' + filename)
-            return hcode
+            logger.log.info(hcode + '   ' + fsize + 'Mb     ' + filename)
+            return hcode,fsize
 @getMethodTime
 def calculate_md5_high_performance(file_path):
     md5_hasher = hashlib.md5()
@@ -108,3 +113,6 @@ def mdavSHA512( path):
     logger.log.info(sha512)
     return sha512
 
+if __name__ == '__main__':
+    size=0.0
+    print(str(size==0))

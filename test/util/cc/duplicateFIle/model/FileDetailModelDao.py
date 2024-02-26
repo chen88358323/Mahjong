@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from test.util.cc.duplicateFIle.model.Datasetup import engine
-from test.util.cc.duplicateFIle.model.FileDetailModel import FileDetailModel
-from test.util.cc.duplicateFIle.model.FileDetailModelDup import FileDetailModelDup
+from .Datasetup import engine
+from .FileDetailModel import FileDetailModel
+from .FileDetailModelDup import FileDetailModelDup
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import func
 
@@ -156,7 +156,7 @@ def convertDupFile2File(file,dupfile):
     file.modifiedtime=datetime.datetime.now()
     return file
 
-
+#todo 出现递归异常了。。。
 #批量插入会有重复数据，需要进行清理
 def clearDuplicatRecorders(filedetailmodeList):
     rows,hashs=queryFileDetailModelInHcode(filedetailmodeList)
@@ -179,6 +179,15 @@ def clearDuplicatRecorders(filedetailmodeList):
                 logger.log.error("dbrecoder hcode:" + dbrecoder.hcode)
                 logger.log.error("dbrecoder " + '  filename:' + dbrecoder.systemdriver + dbrecoder.path + osseparator + strutil.clearpath(dbrecoder.filename))
                 logger.log.error("scanfile  " + '  filename:' + removefd.systemdriver + removefd.path + osseparator + strutil.clearpath(removefd.filename))
+            else:
+                logger.log.error("很奇怪为什么会出现这句")
+                logger.log.error(
+                    "dbrecoder " + '  filename:' + dbrecoder.systemdriver + dbrecoder.path + osseparator + strutil.clearpath(
+                        dbrecoder.filename))
+                logger.log.error(
+                    "scanfile  " + '  filename:' + removefd.systemdriver + removefd.path + osseparator + strutil.clearpath(
+                        removefd.filename))
+
             #TODO 将重复数据装入torr-dupilicate表
         if(duplist is not None and len(duplist)>0):
             logger.log.info("重复数据更新至filedetail_dup表中，数量" + str(len(duplist)))

@@ -10,7 +10,7 @@ CREATE DATABASE `torr` /*!40100 DEFAULT CHARACTER SET utf8mb4 */;
       `filename` varchar(500) NOT NULL DEFAULT '文件名',
       `creattime` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '''扫描文件时间''',
       `modifiedtime` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '''文件修改时间''',
-      `filetype` varchar(10) DEFAULT NULL,
+      `filetype` varchar(50) DEFAULT NULL,
       `belong` varchar(45) DEFAULT NULL COMMENT '分类',
       `keyword` varchar(200) DEFAULT NULL,
       `systemdriver` varchar(50) DEFAULT NULL COMMENT '系统盘符',
@@ -29,7 +29,7 @@ CREATE TABLE `filedetails` (
   `filename` varchar(500) NOT NULL DEFAULT '文件名',
   `creattime` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '''扫描文件时间''',
   `modifiedtime` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '''文件修改时间''',
-  `filetype` varchar(10) DEFAULT NULL,
+  `filetype` varchar(50) DEFAULT NULL,
   `belong` varchar(45) DEFAULT NULL COMMENT '分类',
   `keyword` varchar(200) DEFAULT NULL,
   `systemdriver` varchar(50) DEFAULT NULL COMMENT '系统盘符',
@@ -38,3 +38,16 @@ CREATE TABLE `filedetails` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `hcode_idx` (`hcode`)
 ) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4;
+
+
+--linux
+--SELECT concat(a.systemdriver,a.path,a.filename) as src,
+--concat(b.systemdriver,b.path,b.filename) as dup,
+--a.filesize,b.filesize
+--FROM torr.filedetails  a,torr.filedetails_dup b where a.hcode=b.hcode limit 100;
+--
+--win
+--SELECT concat(a.systemdriver,a.path,'\\',a.filename) as src,
+--concat(b.systemdriver,b.path,'\\',b.filename) as dup,
+--a.filesize,b.filesize
+--FROM torr.filedetails  a,torr.filedetails_dup b where a.hcode=b.hcode limit 100;
