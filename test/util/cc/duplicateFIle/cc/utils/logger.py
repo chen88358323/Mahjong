@@ -31,7 +31,7 @@ class Logger(object):
             th.setFormatter(format_str)#设置文件里写入的格式
             self.logger.addHandler(sh) #把对象加到logger里
             self.logger.addHandler(th)
-log = Logger('../hcode.log', level='debug').logger
+log = Logger('../../hcode.log', level='debug').logger
 # if __name__ == '__main__':
     # log = Logger('all.log',level='debug')
     # log.logger.debug('debug')

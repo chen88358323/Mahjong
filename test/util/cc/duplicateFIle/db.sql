@@ -51,3 +51,42 @@ CREATE TABLE `filedetails` (
 --concat(b.systemdriver,b.path,'\\',b.filename) as dup,
 --a.filesize,b.filesize
 --FROM torr.filedetails  a,torr.filedetails_dup b where a.hcode=b.hcode limit 100;
+
+
+
+SELECT id, hcode, isdir, `path`, filename, creattime, modifiedtime, filetype, belong, keyword, systemdriver, platformscan, filesize
+FROM torr.filedetails;
+
+
+SELECT count(*)
+FROM torr.filedetails  a,torr.filedetails_dup b
+where a.hcode=b.hcode  and ( a.`path` !=b.`path`
+or a.filename !=b.filename )
+
+SELECT concat(a.systemdriver,a.path,'/',a.filename) as src,
+concat(b.systemdriver,b.path,'/',b.filename) as dup,
+a.filesize,b.filesize,a.hcode,a.id ,b.id
+FROM torr.filedetails  a,torr.filedetails_dup b
+where a.hcode=b.hcode and ( a.`path` !=b.`path`
+or a.filename !=b.filename ) limit 53000;
+
+SELECT  f.systemdriver  FROM filedetails f GROUP BY f.systemdriver
+
+
+SELECT COUNT(*)
+FROM torr.filedetails  a,torr.filedetails_dup b where a.hcode=b.hcode limit 25000;
+
+
+SELECT concat(a.systemdriver,a.path,'/',a.filename,a.filetype) as src,
+concat(b.systemdriver,b.path,'/',b.filename,b.filetype) as dup,a.filesize ,b.filesize
+FROM torr.filedetails  a,torr.filedetails_dup b where a.hcode=b.hcode and a.`path` =b.`path`
+and a.filename =b.filename
+
+SELECT count(*)
+FROM torr.filedetails  a,torr.filedetails_dup b where a.hcode=b.hcode and a.`path` =b.`path`
+and a.filename =b.filename
+
+
+select * from filedetails f where hcode ='654253eb1e04ab830f00d8fcd73a2516'
+
+select * from filedetails_dup fd  where hcode ='654253eb1e04ab830f00d8fcd73a2516'

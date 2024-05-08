@@ -7,7 +7,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import func
 
 from sqlalchemy.exc import SQLAlchemyError,IntegrityError
-from test.util.cc.duplicateFIle.utils import strutil, logger
+from ..utils import strutil
+from ..utils import logger
 from sqlalchemy.sql import text
 import  datetime,os
 

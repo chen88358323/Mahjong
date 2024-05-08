@@ -1,5 +1,5 @@
-from test.util.cc.duplicateFIle.model import FileDetailModelDao, ESv2
-from test.util.cc.duplicateFIle.utils import logger
+from test.util.cc.duplicateFIle.cc.model import FileDetailModelDao, ESv2
+from test.util.cc.duplicateFIle.cc.utils import logger
 
 
 def add_dup_Idx():
@@ -14,7 +14,7 @@ def add_dup_Idx():
                 # 2.query es data
                 logger.log.warning("start index  " + ESv2.es_filedetaildup_name)
                 # 3.add or update es data
-                ESv2.createESIdx(ESv2.es_filedetaildup_name,dupfile,ESv2.es_filedetaildup_docid)
+                ESv2.createESIdx(ESv2.es_filedetaildup_name, dupfile,dupfile.id)
         else:
             logger.log.warning("*******************************************")
             logger.log.warning("filedetail_dup 无数据")
@@ -40,7 +40,7 @@ def delDoc():
     ESv2.delDoc(ESv2.es_filedetaildup_name)
     logger.log.warning("*************end delDoc****************")
 if __name__ == '__main__':
-   # creatDoc()
-    add_dup_Idx()
+    # creatDoc()
+    # add_dup_Idx()
     queryfiledetails_dup()
     # delDoc()

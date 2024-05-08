@@ -1,15 +1,15 @@
 import datetime
 
 import os,sys
-from model import FileDetailModelDao,FileDetailModel,FileDetailModelDup
-from utils import logger,encryutil
+from test.util.cc.duplicateFIle.cc.model import FileDetailModelDup, FileDetailModel, FileDetailModelDao
+from test.util.cc.duplicateFIle.cc.utils import logger,encryutil
 
 
 osseparator=os.path.sep
 
 videoType = ['.avi', '.mp4', '.ts', '.flv','.mkv','.mov', '.rmvb', '.rm', '.mpeg', '.wmv']
 #不扫码的文件夹
-black_dir_list=['$RECYCLE.BIN','System Volume Information']
+black_dir_list=['$RECYCLE.BIN','System Volume Information','FriendlyElec-H3']
 #批量文件处理个数
 batchsize=5
 current_os='windows'
@@ -296,7 +296,7 @@ class FileChecking():
     def __exchange(self):
         hcodelist=[]
         #1.读取文件hcode
-        with open('hcode.txt', 'r', encoding="UTF-8") as file:
+        with open('../hcode.txt', 'r', encoding="UTF-8") as file:
             content=file.readline().replace(" ","")
             content = content.replace("/n", "")
             hcodelist.append(content)

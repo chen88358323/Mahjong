@@ -3,9 +3,9 @@ from elasticsearch.helpers import bulk
 import json
 # import urllib3
 # urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-from test.util.cc.duplicateFIle.Conf import  Conf
+from test.util.cc.duplicateFIle.cc.conf.Conf import  Conf
 
-from test.util.cc.duplicateFIle.model import AlchemyEncoder
+from test.util.cc.duplicateFIle.cc.model import AlchemyEncoder
 
 es_filedetail_name="filedetai"
 es_filedetaildup_name="filedetaildup"
@@ -56,7 +56,7 @@ es = Elasticsearch(
 #   `filesize` float NOT NULL DEFAULT '0' COMMENT '文件大小单位 Mb',
 
 def creatDoc(indexname):
-    res = es.index(index=indexname, document=doc)
+    res = es.indices.create(index=indexname)
     print('creat doc res:' + str(res))
     return  str(res)
 
@@ -68,7 +68,7 @@ def createESIdx(idxName,obj,objid):
     json_object=json.dumps(obj, cls=AlchemyEncoder.AlchemyEncoder)
     print("creat index :"+json_object)
     # 将JSON对象存储在Elasticsearch中
-    es.index(index=idxName, id=objid, body=json_object)
+    es.index(index=idxName, id=objid, document=json_object)
 
 def batchCreateEsIdx(idxName,objlist):
     # 使用bulk()函数批量存储对象到Elasticsearch

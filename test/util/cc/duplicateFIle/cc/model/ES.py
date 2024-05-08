@@ -1,7 +1,7 @@
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk, scan
 import logging
-from test.util.cc.duplicateFIle.Conf import  Conf
+from test.util.cc.duplicateFIle.cc.conf import  Conf
 
 config= Conf()
 ES_CONFIG = {

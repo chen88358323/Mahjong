@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 """文件计算唯一标识"""
 import hashlib
-from test.util.cc.duplicateFIle.utils import logger
+from test.util.cc.duplicateFIle.cc.utils import logger
 import os,time,mmap
 # 相关的信息摘要算法
 #显示文件单位 300M
@@ -25,7 +25,6 @@ def getMethodTime(f):
         costtime = e_time - s_time
         print('方法{}耗时：{}秒'.format(f.__name__,costtime))
         return res
-
     return inner
 
 
@@ -39,18 +38,23 @@ def mdavMD5HighPerform( path):
             fsize = os.path.getsize(path) / bigsize
             logger.log.info(md5 + '   ' + str(round(fsize, 2)) + 'Mb     ' + path)
             return md5
-
-
-
     return md5_hasher.hexdigest()
+
+defaultHcode='1111111111111111111'
+#filename 文件全路径  返回hcode  filesize
 @getMethodTime
 def calc_file_hash(filename):
-    size=os.path.getsize(filename) #文件原本大小
+    size =0
+    try:
+        size=os.path.getsize(filename) #文件原本大小
+    except FileNotFoundError:
+        logger.log.error("发生异常，文件打不开:"+filename)
+        return defaultHcode,size
     fsize = round(size / msize, 4)#格式化后的实际大小
     fsize =str(fsize)
     if size==0:
         logger.log.error("zero file " + filename + ' size:' + str(size))
-        return  '1111111111111111111',fsize
+        return  defaultHcode,fsize
     md5hasher = hashlib.md5()
     ''' 
     Calculate the file hash.
@@ -73,6 +77,8 @@ def calc_file_hash(filename):
             hcode = md5hasher.hexdigest()
             logger.log.info(hcode + '   ' + fsize + 'Mb     ' + filename)
             return hcode,fsize
+
+
 @getMethodTime
 def calculate_md5_high_performance(file_path):
     md5_hasher = hashlib.md5()

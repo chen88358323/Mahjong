@@ -3,7 +3,7 @@
 Created by Pierluigi on 2020-02-03
 project: elasticizefiles
 """
-from test.util.cc.duplicateFIle.Conf import  Conf
+from test.util.cc.duplicateFIle.cc.conf import  Conf
 import logging
 import math
 

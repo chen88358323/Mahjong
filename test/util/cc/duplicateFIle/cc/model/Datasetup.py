@@ -2,7 +2,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.pool import QueuePool
-from test.util.cc.duplicateFIle.Conf import  Conf
+from test.util.cc.duplicateFIle.cc.conf.Conf import  Conf
 
 
 

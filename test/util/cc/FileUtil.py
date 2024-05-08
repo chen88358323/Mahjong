@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
 import shutil
-import os
+import hashlib
+import os,time,mmap
+from moviepy.video.io.VideoFileClip import VideoFileClip
+# 相关的信息摘要算法
+#显示文件单位 300M
+bigsize = 300 * 1024 * 1024
+big_file_read_size=100 * 1024 * 1024
+msize=1 * 1024 * 1024
 siteStr=['gc2048.com-','gc2048.com','rh2048.com','hhd800.com@',
          'hhd800.com','aavv38.xyz@','aavv38.xyz','@']
 entertag='\r\n'
@@ -174,8 +181,19 @@ def removeGarbageFiles(filepath):
              'SIS.jpg',
              '抖淫短视频边看边赚钱的APP.png',
              '饿了么.png',
-             '(_1024免翻 地址发布.chm'
+             '(_1024免翻 地址发布.chm',
+             '.DS_Store',
+             '2048地址发布器PC版.rar','★★★★美女在线一对一，免费试看.gif',
+             '同城一YQ交友.gif',
+             '台湾美女主播.jpg','2048 新片首发 每天更新 同步日韩.htm',
+             '激情隨時看.gif','_萌萝社.jpg.bt.xltd','草榴社區.url','_1024精品无码大包种子.html',
+             '海量高清美女图片地址访问.gif','SexInSex! BoardSexInSex! Board(正版SIS主域名：www.sexinsex.net）.url',
+             '美女荷官竟然被....vip1196.mp4','(_2048免翻墙地址发布.htm','(_2048综合论坛最新地址.htm',
+             '美女直播.mp4', '美女一对一.gif','規懶趴會 @ 伊莉論壇 -.txt.bt.xltd',
+             '灣搭拉咩拉 @ 伊莉論壇.txt.bt.xltd', '灣搭拉咩拉 @ 無限討論區', '規懶趴會 @ 伊莉論壇 -.txt.bt.xltd',
+             '(_1【av8.la】。原版无水印-网络热搜门事件，每日更新！.mhtml'
              ]
+
     # .textClipping 后缀
     # prefix='(1).jpg'
     osseparator = os.path.sep
@@ -189,7 +207,84 @@ def removeGarbageFiles(filepath):
             # absPath = dirpath + filename
             # if(absPath.endswith(prefix)):
             #     print(absPath)
+#scanSpecifFile + scanZeroSizeVideo
+def scanZeroAndSpecifFile(fpath):
+    for dirpath, dirnames, filenames in os.walk(fpath):
+        for filename in filenames:
+            for prefix in filepefix:
+                if(filename.endswith(prefix)):
+                    fullfilepath = os.path.join(dirpath, filename)
+                    print('findfile: '+fullfilepath)
+                    break
+            for prefix in videoType:
+                fullfilepath = os.path.join(dirpath, filename)
+                try:
+                    size = os.path.getsize(fullfilepath)  # 文件原本大小
+                except FileNotFoundError:
+                    print("发生异常，文件打不开:" + filename)
+                if (filename.endswith(prefix) and size == 0):
+                    print('findfile: ' + fullfilepath)
+                    break
 
+
+filepefix = ['bt.xltd', 'torrent', 'textClipping']
+def scanSpecifFile(fpath):
+
+    for dirpath, dirnames, filenames in os.walk(fpath):
+        for filename in filenames:
+            for prefix in filepefix:
+                if(filename.endswith(prefix)):
+                    fullfilepath = os.path.join(dirpath, filename)
+                    print('findfile: '+fullfilepath)
+                    break
+videoType = ['.avi', '.mp4', '.ts', '.flv', '.mkv', '.mov', '.rmvb', '.rm', '.mpeg', '.wmv']
+def scanZeroSizeVideo(fpath):
+    for dirpath, dirnames, filenames in os.walk(fpath):
+        for filename in filenames:
+            for prefix in videoType:
+                fullfilepath = os.path.join(dirpath, filename)
+                if (filename.endswith(prefix) and os.path.getsize(fullfilepath) == 0):
+                    print('findfile: ' + filename)
+                    break
+#对比差异文件
+def dirDiff(srcDir,tarDir):
+    srcMap=getDicFromDir(srcDir)
+    tarMap=getDicFromDir(tarDir)
+
+    srcmapcopy=srcMap.copy()
+    tarmapcopy=tarMap.copy()
+
+    keylist = list(set(tarMap.keys()) & set(srcMap.keys()))
+    for k in keylist:
+        srcmapcopy.pop(k)
+        tarmapcopy.pop(k)
+    print('**************************************************************')
+    print('处理前 '+str(len(srcMap))+'个处理后 '+str(len(srcmapcopy))+'个   在'+srcDir)
+    print('处理前 '+str(len(tarMap))+'个处理后 ' +str( len(tarmapcopy) )+ '个   在' + tarDir)
+    map={}
+    map.update(srcmapcopy)
+    map.update(tarmapcopy)
+    print('合并后 map总长度' + str(len(map)))
+    for(key ,val ) in map.items():
+        print('val:' + val)
+        # print('key' + str(key))
+
+
+
+#根据目录路径生成 code ,filepath的map
+def getDicFromDir(fpath):
+    hclist =[]
+    namelist=[]
+    filemap={}
+    for dirpath, dirnames, filenames in os.walk(fpath):
+        for filename in filenames:
+            fullfilepath = os.path.join(dirpath, filename)
+            hcode=calc_file_hash(fullfilepath)
+            hclist.append(hcode)
+            namelist.append(fullfilepath)
+    if(len(hclist)>0 and len(hclist)==len(namelist)):
+        filemap=dict(zip(hclist,namelist))
+    return filemap
 def scanSmlFile(fpath):
     for dirpath, dirnames, filenames in os.walk(fpath):
         for filename in filenames:
@@ -198,10 +293,67 @@ def scanSmlFile(fpath):
             if filesize<=0.0001:
                 print(fullfilepath)
 
-if __name__ == '__main__':
-    clearDirName('D:\\temp\\dist\\')
-    removeDulicateFiles('D:\\temp\\593254315050521\\')
 
+defaultHcode='1111111111111111'
+def calc_file_hash(filename):
+    size =0
+    try:
+        size=os.path.getsize(filename) #文件原本大小
+    except FileNotFoundError:
+        print("发生异常，文件打不开:"+filename)
+        return defaultHcode
+    fsize = round(size / msize, 4)#格式化后的实际大小
+    fsize =str(fsize)
+    if size==0:
+        print("zero file " + filename + ' size:' + str(size))
+        return  defaultHcode
+    md5hasher = hashlib.md5()
+    ''' 
+    Calculate the file hash.
+    In order to have better performance, if the file is larger than 4MiB,
+    only the first and last 100MiB content of the file will take into consideration
+    '''
+    if size <= bigsize:
+        with open(filename, "rb") as f:
+            with mmap.mmap(f.fileno(),0,access=mmap.ACCESS_READ) as mmapfile:
+                md5hasher.update(mmapfile)
+                hcode=md5hasher.hexdigest()
+                print(hcode + '   ' + fsize + 'Mb     ' + filename)
+                return md5hasher.hexdigest(),fsize
+    else:
+        with open(filename, 'rb') as f:
+         #偏移量，大于300M的文件，读取前100M以及最后面的100M
+            md5hasher.update(f.read(big_file_read_size))
+            f.seek(size - big_file_read_size)
+            md5hasher.update(f.read(big_file_read_size))
+            hcode = md5hasher.hexdigest()
+            print(hcode + '   ' + fsize + 'Mb     ' + filename)
+            return hcode,fsize
+
+def cutVideoHead(fpath):
+    for dirpath, dirnames, filenames in os.walk(fpath):
+        for filename in filenames:
+            fullfilepath = os.path.join(dirpath, filename)
+            newfile=os.path.join(dirpath,'改'+filename)
+            filesize = round(os.path.getsize(fullfilepath) / msize, 4)
+            if filesize>0:
+
+                # 创建视频剪辑
+                video = VideoFileClip(fullfilepath)
+                # 剪辑开头2秒钟的视频
+                video_cut = video.subclip(30)
+
+                # 保存新视频文件
+                video_cut.write_videofile(newfile)
+                print(newfile)
+
+
+if __name__ == '__main__':
+    cutVideoHead('I:\\done\\daifenlei\\《震撼精品 推薦》私密資源交換區Q群'
+                 '貼吧T群内部收集整理各種反差婊母狗自拍不雅視圖美女如雲基本露臉短小精悍637P 295V\\视图\\V\\1')
+    # clearDirName('D:\\temp\\dist\\')
+    # removeDulicateFiles('D:\\temp\\593254315050521\\')
+    dirDiff('D:\\360Download\\2\\','D:\\360Download\\仓鼠管家\\')
     # scanSmlFile("/media/cc/MOIVESOFT/")
     # scanSmlFile("/media/cc/PJYP/")
     # scanSmlFile("/media/cc/ZP/")
@@ -210,13 +362,13 @@ if __name__ == '__main__':
     # scanSmlFile("/media/cc/系统/")
     # scanSmlFile("/media/cc/软件/")
 
-    removeGarbageFiles("I:")
-    removeGarbageFiles("J:")
-    removeGarbageFiles("K:")
-    removeGarbageFiles("L:")
-    removeGarbageFiles("M:")
-    removeGarbageFiles("N:")
-    removeGarbageFiles("X:")
+    # removeGarbageFiles("I:")
+    # removeGarbageFiles("J:")
+    # removeGarbageFiles("K:")
+    # removeGarbageFiles("L:")
+    # removeGarbageFiles("M:")
+    # removeGarbageFiles("N:")
+    # removeGarbageFiles("X:")
 
 
     # removeGarbageFiles("/media/cc/MOIVESOFT/")

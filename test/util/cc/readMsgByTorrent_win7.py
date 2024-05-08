@@ -106,14 +106,14 @@ def getTorrentByDetails(str, filepath):
 
 
 
-
+xunleisuffix='.bt.xltd'
 def editXunleiFile(filepath):
     # filepath = 'D:\\temp\\593254315050521\\demo\\'
     for dirpath, dirnames, filenames in os.walk(filepath):
         for filename in filenames:
-            if filename.endswith('.bt.xltd'):
+            if filename.endswith(xunleisuffix):
                 print('dirpath:' + dirpath)
-                new = filename.replace(".bt.xltd", "")
+                new = filename.replace(xunleisuffix, "")
                 oldfile = filepath + os.sep + filename
                 newfile = filepath + os.sep + new
                 print("修改前:" + oldfile)
@@ -188,7 +188,16 @@ def log(filepath, name,append):
 def findTorrentByDirNameMulti(torrpath, findstr,threadid):
     thread = threading.Thread(target=findTorrentByDirName, args=(torrpath, findstr, threadid))
     thread.start()
-
+#加载种子，如果种子错误或者内容为空，返回空
+def loadTorr(torrpath):
+    try:
+        my_torrent = Torrent.from_file(torrpath)
+        return  my_torrent
+    except BencodeDecodingError:
+        print("error " + torrpath)
+    except IndexError:
+        print("error " + torrpath)
+    return None
 # 根据已下载文件名查找对那个的种子文件，值查找目录，查找每个文件使用findTorrentByTxt
 def findTorrentByDirName(torrpath, findstr,threadid):
 
@@ -196,29 +205,27 @@ def findTorrentByDirName(torrpath, findstr,threadid):
     txt.writelines('*****************'+findstr+'*****************\r\n')
     for dirpath, dirnames, filenames in os.walk(torrpath):
         for filename in filenames:
-            looptag = False
             portion = os.path.splitext(filename)
             if portion[1] == ".torrent":
                 torr = os.path.join(dirpath, filename)
                 # print('torr==' + torr)
-                my_torrent = Torrent.from_file(torr)
-                tfiles = my_torrent.files
-                if (tfiles is not None):
-                    for file in tfiles:
-                        torrentpath = file.name
-                        if (findstr in torrentpath):
-                            if looptag:
+                my_torrent = loadTorr(torr)
+                if(my_torrent!=None):
+                    tfiles = my_torrent.files
+                    if (tfiles is not None):
+                        for file in tfiles:
+                            torrentpath = file.name
+                            if (findstr in torrentpath):
+                                str = torrpath + filename
+                                txt.writelines('*****************')
+                                txt.writelines('\n')
+                                txt.writelines('dirpath' + dirpath)
+                                txt.writelines('\n')
+                                txt.writelines('----------------------')
+                                txt.writelines(dirpath+'\\' + filename)
+                                torrentFiles2str(tfiles, txt)
                                 break
-                            str = torrpath + filename
-                            txt.writelines('*****************')
-                            txt.writelines('\n')
-                            txt.writelines('dirpath' + dirpath)
-                            txt.writelines('\n')
-                            txt.writelines('----------------------')
-                            txt.writelines(torrpath + filename)
-                            torrentFiles2str(tfiles, txt)
-                            # txt.writelines('tfiles' + str(tfiles))
-                            looptag = True
+                                # txt.writelines('tfiles' + str(tfiles))
     txt.close()
 
 
@@ -232,21 +239,22 @@ def findTorrentByTxt(torrpath, *findstrs):
             if portion[1] == ".torrent":
                 torr = os.path.join(dirpath, filename)
                 # print('torr==' + torr)
-                my_torrent = Torrent.from_file(torr)
-                tfiles = my_torrent.files
-                if (tfiles is not None):
-                    for file in tfiles:
-                        torrentpath = file.name
-                        for findstr in findstrs:
-                            if (findstr in torrentpath):
-                                str = torrpath + filename
-                                txt.writelines('*****************')
-                                txt.writelines('\n')
-                                txt.writelines('dirpath' + dirpath)
-                                txt.writelines('\n')
-                                txt.writelines('----------------------')
-                                txt.writelines(torrpath + filename)
-                                torrentFiles2str(tfiles, txt)
+                my_torrent = loadTorr(torr)
+                if (my_torrent != None):
+                    tfiles = my_torrent.files
+                    if (tfiles is not None):
+                        for file in tfiles:
+                            torrentpath = file.name
+                            for findstr in findstrs:
+                                if (findstr in torrentpath):
+                                    str = torrpath + filename
+                                    txt.writelines('*****************')
+                                    txt.writelines('\n')
+                                    txt.writelines('dirpath' + dirpath)
+                                    txt.writelines('\n')
+                                    txt.writelines('----------------------')
+                                    txt.writelines(dirpath+'\\' + filename)
+                                    torrentFiles2str(tfiles, txt)
                             # txt.writelines('tfiles' + str(tfiles))
 
 
@@ -255,9 +263,14 @@ def findTorrentByTxt(torrpath, *findstrs):
 
 def torrentFiles2str(tfiles, log):
     log.writelines('\n')
+    count=0
     for f in tfiles:
+        # if(count>10):
+        #     break
         log.writelines(f.name)
-    log.writelines('\n')
+        log.writelines('\n')
+        count+=1
+
 
 
 #srctorrpath  种子集散地
@@ -525,19 +538,21 @@ filterfileArray=['小黄片.mht',
 
 #用来扫描half文件夹下所有待扫描的半下载文件
 # downdir 下载目录，包含了种子文件的头目录
-def countHalfFiles(downdir):
+# deltag 是否删除.bt.xltd的文件 True 删除 False 不删除
+def countHalfFiles(downdir,deltag):
     for root, dirs, files_list in os.walk(downdir):
         for file_name in files_list:
             if file_name.endswith('torrent'):
                 tfile=os.path.join(root, file_name)
                 print("tfile:"+tfile)
                 print("root:"+root)
-                comparefiles(tfile,root)
+                comparefiles(tfile,root,deltag)
 
     #tfiles 种子里的文件，
     #downdir 下载目录，包含了种子文件的头目录
+    # deltag 是否删除.bt.xltd的文件 True 删除 False 不删除
     #todo  写日志
-def comparefiles(tfile,downdir):
+def comparefiles(tfile,downdir,deltag):
     txtfile = log(downdir, '---comparefiles',False)
     txtfile.writelines('tfile  ' + tfile + '\r\n')
     txtfile.writelines('downdir  ' + downdir + '\r\n')
@@ -577,7 +592,7 @@ def comparefiles(tfile,downdir):
             portion = os.path.splitext(filename)
             #print("portion[1] "+portion[1])
 
-            if  filename.endswith('.bt.xltd'):
+            if deltag and filename.endswith(xunleisuffix):
                 fullname = os.path.join(dirpath, filename)
                 os.remove(fullname)
             elif portion[1] != ".bt":#处理待下载文件，
@@ -601,10 +616,12 @@ def comparefiles(tfile,downdir):
     # for dfile in downloadfilelist:
     #print('tfiellist bf' + str(len(tfiellist)) + '   ' + str(tfiellist))
     tfiellist=getUndownFileList(tfiellist,downloadfilelist)
-    # for cleanfile in downloadfilelist:
-    #     if cleanfile in tfiellist:
-    #         tfiellist.remove(cleanfile)
-    #print('tfiellist af' + str(len(tfiellist)) + '   ' + str(tfiellist))
+    # if deltag:
+    #     for cleanfile in downloadfilelist:
+    #         if cleanfile in tfiellist and cleanfile.endswith(xunleisuffix):
+    #             print('cleanfile del' + cleanfile)
+    #             tfiellist.remove(cleanfile)
+
     downloadfilesize=0#待下载文件总大小
     txtfile.writelines("********************v1.0 待下载文件列表"+ str(len(tfiellist))+"个***************************"+ '\r\n')
     for needdownfile in tfiellist:
@@ -650,7 +667,12 @@ def getUndownFileList(tfiles,downedfiles):
 if __name__ == '__main__':
     # filterBigfiles('D:\\Program20190718\\2022-03-01\\1229\\1\\', 2000)
     # filterBigfiles('D:\\Program20190718\\2022-03-01\\1229\\5\\', 2000)
-    findTorrentByDirName('C:\\Users\\Administrator\\Downloads\\best\\', '长腿高跟 脸穴同框自慰玩穴 开档骚丝袜 高清7','thread-1')
+    # findTorrentByDirName('D:\\temp\\0555\\', 'Irisadamsone','thread-1')
+    findTorrentByDirName('D:\\temp\\0555\\2022-03-01\\0555\\', 'av8.la@HJ220819-1', 'thread-21')
+    # findTorrentByDirName('D:\\temp\\0555\\', '长腿高跟 脸穴同框自慰玩穴 开档骚丝袜 高清7', 'thread-1')
+    # findTorrentByDirName('D:\\temp\\0555\\', '长腿高跟 脸穴同框自慰玩穴 开档骚丝袜 高清7','thread-1')
+
+
     os._exit(0)
 
     #comparefiles("D:\\temp\\0555\\2.torrent","D:\\temp\\0555\\259\\")

@@ -101,27 +101,52 @@ def getDulicateFiles():
             if(absPath.endswith(prefix)):
                 print(absPath)
 
+def findTorrListByStr(strlist,path):
+    if strlist is None:
+        return
+    else:
+        for str in strlist:
+            print('*************************'+str+'查找开始*******************************')
+            getTorrentByDetails(str,path)
+            print('*************************' + str + '查找结束*******************************')
+
+#加载种子，如果种子错误或者内容为空，返回空
+def loadTorr(torrpath):
+    try:
+        my_torrent = Torrent.from_file(torrpath)
+        return  my_torrent
+    except BencodeDecodingError:
+        print("error " + torrpath)
+    except IndexError:
+        print("error " + torrpath)
+    return None
+
 def getTorrentByDetails(str,filepath):
     dirs = []
     # try:
-    for i in os.listdir(filepath):
-        path = filepath + r'\\' + i
-        if os.path.isdir(path):
-            if ((path in dirs) == False and path.endswith('y')):
-                # print('add ' + path)
-                dirs.append(dirs)
-            print('path*****'+i+'   '+path)
-            getTorrentByDetails(str, path)
-        elif os.path.isfile(path) and path.find(".torrent"):
-            my_torrent = Torrent.from_file(path)
-            for torrfile in my_torrent.files:
-                # print('name:'+torrfile.name)
-                if (str in torrfile.name):
-                    dirs.append(path)
-                    # print(my_torrent.total_size / len)
-                    print('t:==>' + path)
-                    print(my_torrent.files)
-                    break
+    for dirpath, dirnames, filenames in os.walk(filepath):
+        for filename in filenames:
+                portion = os.path.splitext(filename)
+                if portion[1] == ".torrent":
+                    path = os.path.join(dirpath, filename)
+                    # print('torr=='+torr)
+                    try:
+                        my_torrent = Torrent.from_file(path)
+                        for torrfile in my_torrent.files:
+                            # print('name:'+torrfile.name)
+                            if (torrfile.name.startswith(str)):
+                                print('t:==>' + path)
+                                dirs.append(path)
+                                # print(my_torrent.total_size / len)
+                                print('str:==>' + str)
+                                # print(my_torrent.files)
+                                break
+                    except BencodeDecodingError:
+                        print("error " + filename)
+                        continue
+                    except IndexError:
+                        print("error " + filename)
+                        continue
 # finally:
 # print('dirs',dirs)
 
@@ -129,9 +154,9 @@ def editXunleiFile(filepath):
     #filepath = 'D:\\temp\\593254315050521\\demo\\'
     for dirpath, dirnames, filenames in os.walk(filepath):
         for filename in filenames:
-            if filename.endswith('.bt.xltd'):
+            if filename.endswith(xunleisuffix):
                 print('dirpath:'+dirpath)
-                new = filename.replace(".bt.xltd", "")
+                new = filename.replace(xunleisuffix, "")
                 oldfile=filepath + os.sep + filename
                 newfile=filepath + os.sep + new
                 print("修改前:" + oldfile)
@@ -142,7 +167,7 @@ def clearXunleiFile(filepath):
     #filepath = 'D:\\temp\\593254315050521\\demo\\'
     for dirpath, dirnames, filenames in os.walk(filepath):
         for filename in filenames:
-            if filename.endswith('.bt.xltd'):
+            if filename.endswith(xunleisuffix):
                 fullname=os.path.join(dirpath,filename)
                 try:
                     print('file: '+fullname)
@@ -666,7 +691,8 @@ def moveduplicateTorr(tfile):
 
 #用来扫描half文件夹下所有待扫描的半下载文件
 # downdir 下载目录，包含了种子文件的头目录
-def countHalfFiles(downdir):
+# deltag 是否删除.bt.xltd的文件 True 删除 False 不删除
+def countHalfFiles(downdir,deltag):
     for root, dirs, files_list in os.walk(downdir):
         for file_name in files_list:
             if file_name.endswith('torrent') and not  str(file_name).startswith(HALF_NAME_PREFIX):
@@ -677,16 +703,21 @@ def countHalfFiles(downdir):
 
 ### downdir 下载目录，包含了种子文件的头目录
 ### 日志文件
-def scanDownloadingFiles(downdir,txtfile):
+    # deltag 是否删除.bt.xltd的文件 True 删除 False 不删除
+def scanDownloadingFiles(downdir,txtfile,deltag):
     downloadmap = {}
     for dirpath, dirnames, filenames in os.walk(downdir):
         txtfile.writelines('dirpath'+dirpath + '\r\n')
         # print('dirpath'+dirpath)
         # print('dirnames' + dirnames)
         for filename in filenames:
+
             portion = os.path.splitext(filename)
-            #print("portion[1] "+portion[1])
-            if portion[1] != ".bt":#处理待下载文件，
+            if deltag and filename.endswith(xunleisuffix):
+                fullname = os.path.join(dirpath, filename)
+                print("del path:" + fullname)
+                os.remove(fullname)
+            elif portion[1] != ".bt":#处理待下载文件，
                 fullname= os.path.join(dirpath, filename)
                 fsize=os.path.getsize(fullname)
                 #print("full path:"+fullname)
@@ -699,12 +730,13 @@ def scanDownloadingFiles(downdir,txtfile):
                 downloadmap.setdefault(torrfilepath,fsize)#生成文件列表
 
     return downloadmap
-
+xunleisuffix = '.bt.xltd'
 
     #tfiles 种子里的文件，
     #downdir 下载目录，包含了种子文件的头目录
-    #todo  写日志
-def comparefiles(tfile,downdir):
+    # deltag 是否删除.bt.xltd的文件 True 删除 False 不删除
+    # todo  写日志
+def comparefiles(tfile, downdir, deltag):
     txtfile = log(downdir, 'comparefiles',False)
     txtfile.writelines('tfile' + tfile + '\r\n')
     txtfile.writelines('downdir' + downdir + '\r\n')
@@ -736,7 +768,7 @@ def comparefiles(tfile,downdir):
 
 
 
-    downloadmap=scanDownloadingFiles(downdir,txtfile)
+    downloadmap=scanDownloadingFiles(downdir,txtfile, deltag)
     m=1024*1024
 
         #print(tfilename)
@@ -797,8 +829,13 @@ if __name__ == '__main__':
     #test()
     #clearXunleiFile("D:\\temp\\")
    # print('C5AEA8F99A520790D421FEB7162DDF7A77BD297B'.lower())
+    #strlist=['全景後拍28個氣質少婦','059','195']
+    #findTorrListByStr(strlist,'D:\\temp\\0555\\2022-03-01\\0555\\')
+    # findTorrListByStr(strlist, 'D:\\temp\\0555\\2022-03-01\\0555\\b20\errfiles\\')
 
-    findTorrentByHashcodeInDir("D:\\temp\\0555\\2022-03-01\\","D:\\temp\\backup\\find\\")
+    scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\b30\\")
+    #os._exit(0)
+    # findTorrentByHashcodeInDir("D:\\temp\\0555\\2022-03-01\\","D:\\temp\\backup\\find\\")
     # scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\b25\\")
     #scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\normal\\")
     #countHalfFiles('D:\\temp\\chachong\\193-性感美女顶级调教 狂操捆绑 强制高潮 爆菊 滴蜡 K9训犬 群P毒龙 乱交露出\\')
@@ -831,7 +868,7 @@ if __name__ == '__main__':
 
     # getTorrDetail('D:\\temp\\593254315050521\\1210-best\\1\\')
 
-    # getTorrentByDetails('D:\\360Downloads\\1228\\5\\')
+    #getTorrentByDetails('','D:\\temp\\0555\\2022-03-01\\0555\\')
 
     # for i in range(51):
     #     dirpath='D:\\temp\\593254315050521\\alltorr\\'+str(i)+'\\'+str(i)+'\\y'
