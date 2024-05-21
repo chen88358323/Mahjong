@@ -22,7 +22,7 @@ class FileDetailModelDup(Base):
     systemdriver=Column(String(50))
     platformscan = Column(String(10))
     filesize =Column(Float,default=0.0000)
-
+    virdriver = Column(String(45))  # 虚拟盘符
     creattime= Column(DateTime, default=datetime.datetime.now, comment="扫描文件时间")
     modifiedtime= Column(DateTime, default=datetime.datetime.now, comment="文件修改时间")
     __table__args__ = (
@@ -33,13 +33,13 @@ class FileDetailModelDup(Base):
         return f"object : <id:{self.id} hcode:{self.hcode} isdir:{self.isdir}  " \
                f"path:{self.path} filename:{self.filename} filetype:{self.filetype} " \
                f"belong:{self.belong} keyword:{self.keyword} systemdriver:{self.systemdriver} " \
-               f"platformscan:{self.platformscan}  filesize:{self.filesize}" \
+               f"platformscan:{self.platformscan}  virdriver:{self.virdriver} filesize:{self.filesize}" \
                f"creattime:{self.creattime} modifiedtime:{self.modifiedtime}>"
         # 初始化中给对象属性赋值
 
     def __init__(self, hcode, isdir, path, filename, filetype,
                  systemdriver, platformscan,
-                 keyword, belong, filesize):
+                 keyword, belong, filesize,virdriver):
         self.hcode = hcode
         self.isdir = isdir
         self.path = path
@@ -50,6 +50,7 @@ class FileDetailModelDup(Base):
         self.keyword = keyword
         self.belong = belong
         self.filesize = filesize
+        self.virdriver = virdriver
         # if creattime is None:
         #     self.creattime=datetime.datetime.now
         # else:

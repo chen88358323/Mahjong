@@ -136,7 +136,8 @@ def addBatch(list):#todo 唯一性失败，优化细分
 def convert2FileDetailModelDup(fileDetailModel):
     dupobj = FileDetailModelDup(fileDetailModel.hcode, fileDetailModel.isdir,
                                 fileDetailModel.path, fileDetailModel.filename, fileDetailModel.filetype,
-                                fileDetailModel.systemdriver,fileDetailModel.platformscan,None,None,fileDetailModel.filesize)
+                                fileDetailModel.systemdriver,fileDetailModel.platformscan,None,None,
+                                fileDetailModel.filesize,fileDetailModel.virdriver)
     return dupobj
 
 #select  where  hcode in

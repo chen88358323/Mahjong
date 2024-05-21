@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 """显示目录树状图"""
 import os,sys
+import glob
 import shutil
 
 #不扫码的文件夹
@@ -96,9 +97,44 @@ def splitPath2fnameDname(fullpath, driver):
     filedir = filedir.replace(filename, '')
     return filename,filedir+osseparator
 
+#视频类型分类
+category=['spj','sp','ds','hj','mj','md','pic','jvid','xz','sm','of','tui','pic','zp',]
+
+#虚拟分区，为区分每个分区的唯一性
+virtualLocation=['ZB','SPJ','SP','SPJ-A','SPJHJ','E','H','I','J','K','G','O','V','X','N','T','','Z',]
+def getVirtualPathByROOTDir(root_path, file_extension):
+
+        # 确保扩展名前有一个点
+        if not file_extension.startswith('.'):
+            file_extension = '.' + file_extension
+
+
+
+def getVirtualPath(path, file_extension):
+    driver=getDriverPath(path)
+     # 获取根目录下的所有文件和目录名
+    files_in_root = os.listdir(driver)
+
+    # 筛选出匹配指定扩展名的文件
+    files = [f for f in files_in_root if f.endswith(file_extension)]
+    if(len(files)>0):
+        for f in files:
+            farray = os.path.splitext(f)
+            if(farray[0] in virtualLocation):
+                print('VirtualPath  is '+farray[0] )
+                return farray[0]
+    return 'None'
+
 if __name__ == '__main__':
-    delfilebytxt('D:\\temp\\zp-local.txt')
+
     # root_path = input("请输入根目录路径：")
     # root_path = "D:\\temp\\0555\\"
     # print(os.path.abspath(root_path))
     # generate_file_tree_local(root_path, depth=0, site=[])
+    # 示例用法
+
+    # 查找根目录下所有的 .txt 文件
+    txt_files = getVirtualPath('D:\\temp\\','.ini')
+    print(txt_files)
+    # 打印找到的文件路径
+

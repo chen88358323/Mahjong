@@ -4,7 +4,8 @@ import os
 from test.util.cc.duplicateFIle.cc.model import FileDetailModelDup, FileDetailModel, FileDetailModelDao,LocalCache
 from test.util.cc.duplicateFIle.cc.utils import logger,encryutil,dirutil
 
-
+#TODO  增加虚拟盘符支持
+#TODO  ES增加
 
 #视频类型分类
 category=['spj','sp','ds','hj','mj','md','pic','jvid','xz','sm','of','tui','pic','zp',]
@@ -16,7 +17,7 @@ virtualLocation=['ZB','SPJ','SP','SPJ-A','SPJHJ','E','H','I','J','K','G','O','V'
 videoType = ['.avi', '.mp4', '.ts', '.flv','.mkv','.mov', '.rmvb', '.rm', '.mpeg', '.wmv']
 
 #批量文件处理个数
-batchsize=5
+batchsize=500
 
 class FileChecking():
     def __init__(self):
@@ -96,8 +97,9 @@ class FileChecking():
 
         originalcache=LocalCache.load_snapshot(path)
         # dirver为盘符路径  C:\Users\wuyanzu\  获取盘符为c:
-        # platformscan  Windows  or  Linux
+        # platformscan  Windows  or  LinuxYES
         driver, platformscan = dirutil.getDriverAndPlatForm(path)
+        virtualPath=dirutil.getVirtualPath(path,'.ini')
         addcache =  dict()
         if originalcache is None:#无缓存直接扫描
             for dirpath, dirnames, filenames in os.walk(path):
@@ -111,7 +113,7 @@ class FileChecking():
                         if i == batchsize:  # 满足条件批量插入
                             i = 0
                             fileObjList = self.__batchAndClear(fileObjList, fileCodeSet)
-                        obj = self.__buildFileDetailModel(filename, dirpath, driver, platformscan)
+                        obj = self.__buildFileDetailModel(filename, dirpath, driver, platformscan,virtualPath)
                         fileObjList.append(obj)
                         fileCodeSet.add(obj.hcode)
                         #file.systemdriver + file.path + file.filename
@@ -141,7 +143,7 @@ class FileChecking():
 
             logger.log.info('增量扫描文件 新增文件数' + str(len(addfiles))+' 删除文件数'+str(len(delfiles)))
             #1.扫描新增filelist 生成缓存 #TODO ADD ES
-            newCacheDict=self.__batchAddFileDetailModelByFileList(addfiles,driver, platformscan )
+            newCacheDict=self.__batchAddFileDetailModelByFileList(addfiles,driver, platformscan ,virtualPath)
 
             self.__syncDelFile(originalcache,delfiles,driver)
             #两个缓存相加
@@ -166,7 +168,7 @@ class FileChecking():
         #3. TODO ADD ES
 
     #根据文件列表，批量更新数据库
-    def __batchAddFileDetailModelByFileList(self,filelist,driver, platformscan ):
+    def __batchAddFileDetailModelByFileList(self,filelist,driver, platformscan ,virtualPath):
         fileObjList = []
         fileCodeSet =  set()
 
@@ -179,7 +181,7 @@ class FileChecking():
                 if i == batchsize:  # 满足条件批量插入
                     i = 0
                     fileObjList = self.__batchAndClear(fileObjList, fileCodeSet)
-                obj = self.__buildFileDetailModelByPath(f,driver, platformscan )
+                obj = self.__buildFileDetailModelByPath(f,driver, platformscan,virtualPath )
                 fileObjList.append(obj)
                 fileCodeSet.add(obj.hcode)
                 # file.systemdriver + file.path + file.filename
@@ -189,7 +191,7 @@ class FileChecking():
             fileObjList = self.__batchAndClear(fileObjList, fileCodeSet)
         return addcache
         # 构建文件列表构建详细信息对象
-    def __buildFileDetailModelByPath(self, filepath, driver, platformscan):
+    def __buildFileDetailModelByPath(self, filepath, driver, platformscan,virtualPath):
         filename,filedir = dirutil.splitPath2fnameDname(filepath,driver)
 
         portion = os.path.splitext(filename)
@@ -200,10 +202,11 @@ class FileChecking():
         obj = FileDetailModel.FileDetailModel(hcode=code, isdir=isDir, path=filedir, filename=filename,
                                               filetype=portion[1], systemdriver=driver,
                                               platformscan=platformscan,
-                                              keyword=None, belong=None, filesize=filesize)
+                                              keyword=None, belong=None, filesize=filesize,
+                                              virdriver=virtualPath)
         return obj
     #构建文件详细信息对象
-    def __buildFileDetailModel(self,filename,dirpath,driver,platformscan):
+    def __buildFileDetailModel(self,filename,dirpath,driver,platformscan,virtualPath):
         portion = os.path.splitext(filename)
         # if self.__isScanFile(portion[1]):
         fullfilepath = os.path.join(dirpath, filename)
@@ -222,7 +225,8 @@ class FileChecking():
         obj = FileDetailModel.FileDetailModel(hcode=code, isdir=isDir, path=filedir, filename=filename,
                                               filetype=portion[1], systemdriver=driver,
                                               platformscan=platformscan,
-                                              keyword=None, belong=None, filesize=filesize)
+                                              keyword=None, belong=None, filesize=filesize,
+                                              virdriver=virtualPath)
         return  obj
     #fileObjList  FileDetailModel 集合
     #fileCodeSet  hcode set ，放置提交的一批次数据中含有重复内容
@@ -299,13 +303,13 @@ class FileChecking():
         # self.__exchange()#清理数据，将
         # os._exit(0)
 
-        #path = input()
-        # print("清理表数据请输入y,拒绝请按其他键")
-        # if path == "y":
-        #     #清理数据表
-        #     self.__cleartables()
-        # else:
-        #     print("未清理表数据")
+        ans = input()
+        print("慎用慎用，只在测试环境输入YES,拒绝请按其他键")
+        if ans == "YES":
+            #清理数据 DB CACHE
+            self.__cleardata4Test()
+        else:
+            print("未清理表数据")
 
         #1.加载待扫描路径
         self.__getSearchHeavyPaths()
@@ -361,9 +365,13 @@ class FileChecking():
         # self.searchHeavyPaths.add("J:\\")
         # self.searchHeavyPaths.add("K:\\")
 
-    def __cleartables(self):
+    def __cleardata4Test(self):
         FileDetailModelDao.truncatetables(FileDetailModel.FileDetailModel.__tablename__)
         FileDetailModelDao.truncatetables(FileDetailModelDup.FileDetailModelDup.__tablename__)
+        testcachepath=r'D:\filescan.cache'
+        if os.path.isfile(testcachepath):
+            os.remove()
+
 
     #清理数据，将dup表数据迁移至原表中，dup表该数据进行删除
     def __exchange(self):

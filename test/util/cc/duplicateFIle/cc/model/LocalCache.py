@@ -35,6 +35,7 @@ def save_snapshot(directory,snapshot):
 #根据给定路径计算缓存位置，并加载
 def load_snapshot(path):
     driverpath = dirutil.getDriverPath(path) + localCacheName
+    print('localCache==>'+driverpath)
     if os.path.isfile(driverpath):  # 缓存文件存在
         #Load a snapshot from a file using pickle.
         with open(driverpath, 'rb') as f:

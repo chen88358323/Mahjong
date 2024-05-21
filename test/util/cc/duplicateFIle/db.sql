@@ -38,7 +38,12 @@ CREATE TABLE `filedetails` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `hcode_idx` (`hcode`)
 ) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4;
-
+---------24-05-21---------ADD--------
+ALTER TABLE `torr`.`filedetails`
+ADD COLUMN `virdriver` VARCHAR(45) NULL COMMENT '虚拟盘符，用于区分各硬盘数据' AFTER `filesize`;
+ALTER TABLE `torr`.`filedetails_dup`
+ADD COLUMN `virdriver` VARCHAR(45) NULL COMMENT '虚拟盘符，用于区分各硬盘数据' AFTER `filesize`;
+---------24-05-21---------ADD--------
 
 --linux
 --SELECT concat(a.systemdriver,a.path,a.filename) as src,
