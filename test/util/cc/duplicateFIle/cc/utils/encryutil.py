@@ -6,7 +6,11 @@ import os,time,mmap
 # 相关的信息摘要算法
 #显示文件单位 300M
 bigsize = 300 * 1024 * 1024
-big_file_read_size=100 * 1024 * 1024
+big_file_read_size=25 * 1024 * 1024
+
+
+quick_bigsize = 100 * 1024 * 1024
+quick_big_file_read_size=25 * 1024 * 1024
 msize=1 * 1024 * 1024
 def mdavMD5( path):
     md5file = open(path, 'rb')
@@ -78,7 +82,42 @@ def calc_file_hash(filename):
             logger.log.info(hcode + '   ' + fsize + 'Mb     ' + filename)
             return hcode,fsize
 
-
+#对于大文件，只计算一部分，
+@getMethodTime
+def calc_halffile_hash(filename):
+    size =0
+    try:
+        size=os.path.getsize(filename) #文件原本大小
+    except FileNotFoundError:
+        logger.log.error("发生异常，文件打不开:"+filename)
+        return defaultHcode,size
+    fsize = round(size / msize, 4)#格式化后的实际大小
+    fsize =str(fsize)
+    if size==0:
+        logger.log.error("zero file " + filename + ' size:' + str(size))
+        return  defaultHcode,fsize
+    md5hasher = hashlib.md5()
+    ''' 
+    Calculate the file hash.
+    In order to have better performance, if the file is larger than 4MiB,
+    only the first and last 100MiB content of the file will take into consideration
+    '''
+    if size <= quick_bigsize:
+        with open(filename, "rb") as f:
+            with mmap.mmap(f.fileno(),0,access=mmap.ACCESS_READ) as mmapfile:
+                md5hasher.update(mmapfile)
+                hcode=md5hasher.hexdigest()
+                logger.log.info(hcode + '   ' + fsize + 'Mb     ' + filename)
+                return md5hasher.hexdigest(),fsize
+    else:
+        with open(filename, 'rb') as f:
+         #偏移量，大于300M的文件，读取后nM内容
+            #md5hasher.update(f.read(big_file_read_size))
+            f.seek(size - quick_big_file_read_size)
+            md5hasher.update(f.read(quick_big_file_read_size))
+            hcode = md5hasher.hexdigest()
+            logger.log.info(hcode + '   ' + fsize + 'Mb     ' + filename)
+            return hcode,fsize
 @getMethodTime
 def calculate_md5_high_performance(file_path):
     md5_hasher = hashlib.md5()

@@ -1,8 +1,42 @@
 #! /usr/bin/env python3
 # -*- coding: UTF-8 -*-
 """显示目录树状图"""
-import os
+import os,sys
+import shutil
 
+#不扫码的文件夹
+black_dir_list=['$RECYCLE.BIN','System Volume Information','FriendlyElec-H3']
+#路径分隔符 \\ /
+osseparator=os.path.sep
+def getdriver( path, platform):
+    if (platform == 'Windows'):
+        driver, rem = os.path.splitdrive(path)
+    else:
+        driver = path
+    return driver
+
+def getDriverAndPlatForm(path):
+    p=getPlatform()
+    return  getdriver(path,p),p
+
+def getDriverPath(path):
+    return  getdriver(path,getPlatform())+os.path.sep
+def isScanDir( path):
+    for dir in black_dir_list:
+        if (dir in path):
+            return True
+    return False
+# 获取当前系统信息
+def getPlatform():
+    if sys.platform.startswith('linux'):
+        current_os = "Linux"
+    elif sys.platform.startswith('win'):
+        current_os = "Windows"
+    elif sys.platform.startswith('darwin'):
+        current_os = "MAC"
+    else:
+        current_os = str(sys.platform)
+    return current_os
 
 def generate_file_tree_local(path: str, depth: int, site: list):
     """
@@ -42,9 +76,29 @@ def generate_file_tree_local(path: str, depth: int, site: list):
             # 移除当前已出现转折的层级数
             site.pop()
 
+#根据txt删除指定文件
+def delfilebytxt(txtpath):
+    with open(txtpath, "r", encoding="UTF-8") as file:
+        lines = file.readlines()
+        for line in lines:
+            line=line.strip()
+            if(line is not None and os.path.isfile(line)):
+                print('remove ==>'+line)
+                os.remove(line)
+            else:
+                print("File does not exist "+line)
+#根据文件全路径，生成文件名，去除驱动器后的路径值
+def splitPath2fnameDname(fullpath, driver):
+    filename = os.path.basename(fullpath)
+    filedir = os.path.dirname(fullpath)
+    # dirpath  filename portion[1]
+    filedir = filedir.replace(driver, '')
+    filedir = filedir.replace(filename, '')
+    return filename,filedir+osseparator
 
 if __name__ == '__main__':
+    delfilebytxt('D:\\temp\\zp-local.txt')
     # root_path = input("请输入根目录路径：")
-    root_path = "D:\\temp\\0555\\"
-    print(os.path.abspath(root_path))
-    generate_file_tree_local(root_path, depth=0, site=[])
+    # root_path = "D:\\temp\\0555\\"
+    # print(os.path.abspath(root_path))
+    # generate_file_tree_local(root_path, depth=0, site=[])

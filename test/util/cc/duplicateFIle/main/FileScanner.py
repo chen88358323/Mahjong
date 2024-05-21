@@ -1,19 +1,22 @@
 import datetime
+from collections import ChainMap
+import os
+from test.util.cc.duplicateFIle.cc.model import FileDetailModelDup, FileDetailModel, FileDetailModelDao,LocalCache
+from test.util.cc.duplicateFIle.cc.utils import logger,encryutil,dirutil
 
-import os,sys
-from test.util.cc.duplicateFIle.cc.model import FileDetailModelDup, FileDetailModel, FileDetailModelDao
-from test.util.cc.duplicateFIle.cc.utils import logger,encryutil
 
 
-osseparator=os.path.sep
+#视频类型分类
+category=['spj','sp','ds','hj','mj','md','pic','jvid','xz','sm','of','tui','pic','zp',]
+
+#虚拟分区，为区分每个分区的唯一性
+virtualLocation=['ZB','SPJ','SP','SPJ-A','SPJHJ','E','H','I','J','K','G','O','V','X','N','T','','Z',]
+
 
 videoType = ['.avi', '.mp4', '.ts', '.flv','.mkv','.mov', '.rmvb', '.rm', '.mpeg', '.wmv']
-#不扫码的文件夹
-black_dir_list=['$RECYCLE.BIN','System Volume Information','FriendlyElec-H3']
+
 #批量文件处理个数
 batchsize=5
-current_os='windows'
-# platform='windows'
 
 class FileChecking():
     def __init__(self):
@@ -44,20 +47,23 @@ class FileChecking():
                 res=True
                 break
         return  res
+
+
+        return duplicate_objects
     #清理文件列表中可能存在的重复数据
     def __clearFileObjList(self,fileObjList,fileCodeSet):
         if len(fileObjList)!=len(fileCodeSet):
 
             tarlist=[]
             duplist=[]
+            #遍历，生成tarlist
             for fileobj in fileObjList:
                 if fileobj.hcode in fileCodeSet:
                     fileCodeSet.remove(fileobj.hcode)
                     tarlist.append(fileobj)
+
             dulicatelist= list(set(fileObjList)-set(tarlist))
-
             if(dulicatelist is not None and len(dulicatelist))>0:
-
                 logger.log.error("上传数据集存在重复数据" + str(len(dulicatelist)))
                 for fileobj in dulicatelist:
                     fileobjdup= FileDetailModelDao.convert2FileDetailModelDup(fileobj)
@@ -71,18 +77,7 @@ class FileChecking():
 
         return fileObjList
 
-    def __getdriver(self,path,platform):
-        if(platform=='Windows'):
-            driver, rem = os.path.splitdrive(path)
-        else:
-            driver=path
-        return  driver
 
-    def __isScanDir(self,path):
-        for dir in black_dir_list:
-            if(dir in path):
-                return True
-        return False
     # 判断是否是扫描文件
     def __isScanFile(self,filesuffix):
         return True
@@ -91,55 +86,144 @@ class FileChecking():
         # else:
         #     return  False
     # def filterUselessFile(filename):
+
+
     #path  获取需要对比的文件完整路径
     #
     def __findFileDetail(self,path):#获取需要对比的文件完整路径
-        fileObjList=[]
-        fileCodeSet=set()
+        fileObjList = []
+        fileCodeSet = set()
 
-        platformscan = self.__getPlatform()
+        originalcache=LocalCache.load_snapshot(path)
         # dirver为盘符路径  C:\Users\wuyanzu\  获取盘符为c:
-        driver=self.__getdriver(path,platformscan)
-
-
-        for dirpath, dirnames, filenames in os.walk(path):
-            # print("dirpath"+dirpath)
-            # print("dirnames"+dirnames)
-            if self.__isScanDir(dirpath):
-                continue
-            else:
-                i = 0
-                for filename in filenames:
-                    if i == batchsize:  # 满足条件批量插入
-                        i = 0
-                        fileObjList = self.__batchAndClear(fileObjList, fileCodeSet)
-
-                    portion = os.path.splitext(filename)
-                    if self.__isScanFile(portion[1]):
-                        fullfilepath = os.path.join(dirpath, filename)
-
-                        # DBModule.add
-                        # code=self.__mdavMD5HighPerform(fullfilepath)
-
-                         # 头尾计算md5
-                        code ,filesize = encryutil.calc_file_hash(fullfilepath)
-
-                        if os.path.isfile(fullfilepath):
-                            isDir = 0
-                        else:
-                            isDir = 1
-                        # dirpath  filename portion[1]
-                        filedir = dirpath.replace(driver, '')
-                        obj = FileDetailModel.FileDetailModel(hcode=code, isdir=isDir, path=filedir, filename=filename,
-                                                              filetype=portion[1], systemdriver=driver,
-                                                              platformscan=platformscan,
-                                                              keyword=None, belong=None, filesize=filesize)
+        # platformscan  Windows  or  Linux
+        driver, platformscan = dirutil.getDriverAndPlatForm(path)
+        addcache =  dict()
+        if originalcache is None:#无缓存直接扫描
+            for dirpath, dirnames, filenames in os.walk(path):
+                # print("dirpath"+dirpath)
+                # print("dirnames"+dirnames)
+                if dirutil.isScanDir(dirpath):
+                    continue
+                else:
+                    i = 0
+                    for filename in filenames:
+                        if i == batchsize:  # 满足条件批量插入
+                            i = 0
+                            fileObjList = self.__batchAndClear(fileObjList, fileCodeSet)
+                        obj = self.__buildFileDetailModel(filename, dirpath, driver, platformscan)
                         fileObjList.append(obj)
-                        fileCodeSet.add(code)
+                        fileCodeSet.add(obj.hcode)
+                        #file.systemdriver + file.path + file.filename
+                        addcache[obj.systemdriver+obj.path+obj.filename]=obj.hcode
                         i += 1
-                #
-                self.__batchAndClear(fileObjList, fileCodeSet)
+                    #TODO ADD ES
+                    self.__batchAndClear(fileObjList, fileCodeSet)
+            #存储全部缓存
+            LocalCache.save_snapshot(path, addcache)
+        else:
+            originalFileList=originalcache.keys()
 
+            newCacheFileList=[]
+            for dirpath, dirnames, filenames in os.walk(path):
+                if dirutil.isScanDir(dirpath):
+                    continue
+                else:
+                    i = 0
+                    for filename in filenames:
+                        fullfilepath = os.path.join(dirpath, filename)
+                        newCacheFileList.append(fullfilepath)
+
+
+            addfiles=[file for file in newCacheFileList if file not in originalFileList ]
+
+            delfiles=[file for file in originalFileList if file not in newCacheFileList]
+
+            logger.log.info('增量扫描文件 新增文件数' + str(len(addfiles))+' 删除文件数'+str(len(delfiles)))
+            #1.扫描新增filelist 生成缓存 #TODO ADD ES
+            newCacheDict=self.__batchAddFileDetailModelByFileList(addfiles,driver, platformscan )
+
+            self.__syncDelFile(originalcache,delfiles,driver)
+            #两个缓存相加
+            newCache=ChainMap(newCacheDict,originalcache)
+            LocalCache.save_snapshot(path, newCache)
+
+    #将删除信息增加值LOCALCACHE  DB  TODO ES
+    def __syncDelFile(self,originalcache,delfiles,driver):
+        # 2.1 根据keylist更新删除的数据  CACHE #
+        originalcache ,delcache  = LocalCache.clearCacheByKeyList(originalcache, delfiles)
+        # 2.2 根据keylist更新删除的数据  DB #TODO ADD ES
+        hashs = []
+        pathes = []
+        filenames = []
+        if delcache is not None and len(delcache)>0:
+            for k ,v in delcache.items():
+                fn,dn=dirutil.splitPath2fnameDname(k,driver)
+                hashs.append(v)
+                pathes.append(dn)
+                filenames.append(fn)
+            FileDetailModelDao.delBatchByHC_PATH_FN(hashs,pathes,filenames)
+        #3. TODO ADD ES
+
+    #根据文件列表，批量更新数据库
+    def __batchAddFileDetailModelByFileList(self,filelist,driver, platformscan ):
+        fileObjList = []
+        fileCodeSet =  set()
+
+        addcache= dict()
+        if filelist is None or len(filelist) ==0:
+            return dict()
+        else:
+            i = 0
+            for f in filelist:
+                if i == batchsize:  # 满足条件批量插入
+                    i = 0
+                    fileObjList = self.__batchAndClear(fileObjList, fileCodeSet)
+                obj = self.__buildFileDetailModelByPath(f,driver, platformscan )
+                fileObjList.append(obj)
+                fileCodeSet.add(obj.hcode)
+                # file.systemdriver + file.path + file.filename
+                #新增缓存
+                addcache[obj.systemdriver + obj.path + obj.filename] = obj.hcode
+                i += 1
+            fileObjList = self.__batchAndClear(fileObjList, fileCodeSet)
+        return addcache
+        # 构建文件列表构建详细信息对象
+    def __buildFileDetailModelByPath(self, filepath, driver, platformscan):
+        filename,filedir = dirutil.splitPath2fnameDname(filepath,driver)
+
+        portion = os.path.splitext(filename)
+
+        # 头尾计算md5
+        code, filesize = encryutil.calc_halffile_hash(filepath)
+        isDir = 0
+        obj = FileDetailModel.FileDetailModel(hcode=code, isdir=isDir, path=filedir, filename=filename,
+                                              filetype=portion[1], systemdriver=driver,
+                                              platformscan=platformscan,
+                                              keyword=None, belong=None, filesize=filesize)
+        return obj
+    #构建文件详细信息对象
+    def __buildFileDetailModel(self,filename,dirpath,driver,platformscan):
+        portion = os.path.splitext(filename)
+        # if self.__isScanFile(portion[1]):
+        fullfilepath = os.path.join(dirpath, filename)
+
+        # 头尾计算md5
+        # code ,filesize = encryutil.calc_file_hash(fullfilepath)
+        # 尾计算md5
+        code, filesize = encryutil.calc_halffile_hash(fullfilepath)
+
+        if os.path.isfile(fullfilepath):
+            isDir = 0
+        else:
+            isDir = 1
+        # dirpath  filename portion[1]
+        filedir = dirpath.replace(driver, '')
+        obj = FileDetailModel.FileDetailModel(hcode=code, isdir=isDir, path=filedir, filename=filename,
+                                              filetype=portion[1], systemdriver=driver,
+                                              platformscan=platformscan,
+                                              keyword=None, belong=None, filesize=filesize)
+        return  obj
     #fileObjList  FileDetailModel 集合
     #fileCodeSet  hcode set ，放置提交的一批次数据中含有重复内容
     def __batchAndClear(self,fileObjList,fileCodeSet):
@@ -152,8 +236,8 @@ class FileChecking():
 
 
     def __findAllFileTree(self):#查找每一个待查重的文件的所有的子文件
-        logger.log.info("\n\n\n\n准备获取所有待对比的文件完整路径......")
         for path in self.searchHeavyPaths:
+            logger.log.info("\n\n\n\n准备获取所有待对比的文件完整路径......")
             # try:
             self.__findFileDetail(path)
             # except:
@@ -214,41 +298,30 @@ class FileChecking():
         # self.__showReault()
         # self.__exchange()#清理数据，将
         # os._exit(0)
-        path = input()
-        print("清理表数据请输入y,拒绝请按其他键")
-        if path == "y":
-            #清理数据表
-            self.__cleartables()
-        else:
-            print("未清理表数据")
+
+        #path = input()
+        # print("清理表数据请输入y,拒绝请按其他键")
+        # if path == "y":
+        #     #清理数据表
+        #     self.__cleartables()
+        # else:
+        #     print("未清理表数据")
+
         #1.加载待扫描路径
         self.__getSearchHeavyPaths()
-        # 2.开始扫描入库
+        # 2.获取当前文件根路径的缓存文件，没有进行全表扫描
+        # 3.开始扫描入库
         self.__findAllFileTree()
-        # 3.数据比较
-        self.__showReault()
+        # 4.显示重复数据
+        # self.__showReault()
         #es
         #写文件
         # self.__contrastCheckValue()
-        self.__showReault()
+        #self.__showReault()
 
 
 
-    #获取当前系统信息
-    def __getPlatform(self):
 
-
-        if sys.platform.startswith('linux'):
-            current_os="Linux"
-        elif sys.platform.startswith('win'):
-            current_os="Windows"
-        elif sys.platform.startswith('darwin'):
-            current_os = "MAC"
-        else:
-            current_os = str(sys.platform)
-        return current_os
-
-#import sys
     # if sys.platform.startswith('linux'):
     #     print('当前系统为 Linux')
     # elif sys.platform.startswith('win'):
@@ -282,7 +355,7 @@ class FileChecking():
         # self.searchHeavyPaths.add("W:\\")
         # self.searchHeavyPaths.add("X:\\")
         # self.searchHeavyPaths.add("F:\\")
-        # self.searchHeavyPaths.add("G:\\")
+        # self.searchHeavyPaths.add("E:\\")
         # self.searchHeavyPaths.add("H:\\")
         # self.searchHeavyPaths.add("I:\\")
         # self.searchHeavyPaths.add("J:\\")

@@ -34,6 +34,9 @@ def queryfilebycodefn(hcode :str , filename:str):
         return  None
     else:
         return filelist
+
+
+
 def queryfilebycode(hcode :str ):
     # Create a session to interact with the database
     with Session() as session:
@@ -109,7 +112,7 @@ def truncatetables(tablename):
         filelist = session.execute(text(sql))
         logger.log.info("sql " + sql + " is done")
 
-
+@strutil.getDbTime
 def addBatch(list):#todo 唯一性失败，优化细分
     # logger.log.info("add batch "+str(len(list)))
     filedetailmodeList=iter(list)
@@ -129,6 +132,7 @@ def addBatch(list):#todo 唯一性失败，优化细分
         se.close()
         list.clear()
 
+
 def convert2FileDetailModelDup(fileDetailModel):
     dupobj = FileDetailModelDup(fileDetailModel.hcode, fileDetailModel.isdir,
                                 fileDetailModel.path, fileDetailModel.filename, fileDetailModel.filetype,
@@ -145,6 +149,17 @@ def queryFileDetailModelInHcode(filedetailmodeList):
         rows = se.query(FileDetailModel).filter(FileDetailModel.hcode.in_(hashs)).all()
     return  rows,hashs
 
+#根据文件名，路径，hcode删除数据，与删除缓存同时使用
+@strutil.getDbTime
+def delBatchByHC_PATH_FN(hashs,pathes,filenames):#todo 唯一性失败，优化细分
+
+    with Session() as se:
+        rows = se.query(FileDetailModel).filter(FileDetailModel.hcode.in_(hashs),
+                                                FileDetailModel.path.in_(pathes),
+                                                FileDetailModel.filename.in_(filenames)
+                                                ).delete(synchronize_session='fetch')
+        se.commit()
+    return rows, hashs
 
 def convertDupFile2File(file,dupfile):
     file.path=dupfile.path
