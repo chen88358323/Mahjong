@@ -130,7 +130,6 @@ def addBatch(list):#todo 唯一性失败，优化细分
 
     finally:
         se.close()
-        list.clear()
 
 
 def convert2FileDetailModelDup(fileDetailModel):

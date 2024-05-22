@@ -68,14 +68,15 @@ FROM torr.filedetails  a,torr.filedetails_dup b
 where a.hcode=b.hcode  and ( a.`path` !=b.`path`
 or a.filename !=b.filename )
 
-SELECT concat(a.systemdriver,a.path,'/',a.filename) as src,
-concat(b.systemdriver,b.path,'/',b.filename) as dup,
-a.filesize,b.filesize,a.hcode,a.id ,b.id
+SELECT concat(a.systemdriver,a.path,'\\',a.filename) as src,
+ concat(b.systemdriver,b.path,'\\',b.filename) as dup,
+a.filesize,b.filesize,a.hcode,a.id ,b.id, distinct b.filename
 FROM torr.filedetails  a,torr.filedetails_dup b
 where a.hcode=b.hcode and ( a.`path` !=b.`path`
-or a.filename !=b.filename ) limit 53000;
+or a.filename !=b.filename ) limit 5000;
 
 SELECT  f.systemdriver  FROM filedetails f GROUP BY f.systemdriver
+
 
 
 SELECT COUNT(*)

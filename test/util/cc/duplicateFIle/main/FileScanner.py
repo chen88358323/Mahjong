@@ -6,7 +6,7 @@ from test.util.cc.duplicateFIle.cc.utils import logger,encryutil,dirutil
 
 #TODO  增加虚拟盘符支持
 #TODO  ES增加
-
+#TODO 预下载扫描，本地下载文件先扫描是否重复
 #视频类型分类
 category=['spj','sp','ds','hj','mj','md','pic','jvid','xz','sm','of','tui','pic','zp',]
 
@@ -112,7 +112,10 @@ class FileChecking():
                     for filename in filenames:
                         if i == batchsize:  # 满足条件批量插入
                             i = 0
-                            fileObjList = self.__batchAndClear(fileObjList, fileCodeSet)
+
+                            self.__batchAndClear(fileObjList, fileCodeSet)
+                            fileObjList.clear()
+                            print('fileObjList=========>' + str(len(fileObjList)))
                         obj = self.__buildFileDetailModel(filename, dirpath, driver, platformscan,virtualPath)
                         fileObjList.append(obj)
                         fileCodeSet.add(obj.hcode)
@@ -120,7 +123,10 @@ class FileChecking():
                         addcache[obj.systemdriver+obj.path+obj.filename]=obj.hcode
                         i += 1
                     #TODO ADD ES
+
                     self.__batchAndClear(fileObjList, fileCodeSet)
+                    fileObjList.clear()
+                    print('fileObjList=========>' + str(len(fileObjList)))
             #存储全部缓存
             LocalCache.save_snapshot(path, addcache)
         else:
@@ -180,7 +186,9 @@ class FileChecking():
             for f in filelist:
                 if i == batchsize:  # 满足条件批量插入
                     i = 0
-                    fileObjList = self.__batchAndClear(fileObjList, fileCodeSet)
+                    self.__batchAndClear(fileObjList, fileCodeSet)
+                    fileObjList.clear()
+                    print('fileObjList====------=====>' + str(len(fileObjList)))
                 obj = self.__buildFileDetailModelByPath(f,driver, platformscan,virtualPath )
                 fileObjList.append(obj)
                 fileCodeSet.add(obj.hcode)
@@ -188,7 +196,9 @@ class FileChecking():
                 #新增缓存
                 addcache[obj.systemdriver + obj.path + obj.filename] = obj.hcode
                 i += 1
-            fileObjList = self.__batchAndClear(fileObjList, fileCodeSet)
+            self.__batchAndClear(fileObjList, fileCodeSet)
+            fileObjList.clear()
+            print('fileObjList====------=====>' + str(len(fileObjList)))
         return addcache
         # 构建文件列表构建详细信息对象
     def __buildFileDetailModelByPath(self, filepath, driver, platformscan,virtualPath):
@@ -234,9 +244,10 @@ class FileChecking():
         if (fileObjList is not None and len(fileObjList) > 0):
             fileObjList = self.__clearFileObjList(fileObjList, fileCodeSet)
             FileDetailModelDao.addBatch(fileObjList)
-            # fileObjList.clear()
+            fileObjList.clear()
             fileCodeSet.clear()
-        return fileObjList
+            # print('fileObjList===***======>' + str(len(fileObjList)))
+        # return fileObjList
 
 
     def __findAllFileTree(self):#查找每一个待查重的文件的所有的子文件
@@ -337,10 +348,10 @@ class FileChecking():
 
     def __getSearchHeavyPaths(self):#获取需要进行查重的文件夹目录
         #本地测试
-        self.searchHeavyPaths.add("D:\\360Download\\仓鼠管家\\")
+        # self.searchHeavyPaths.add("D:\\360Download\\仓鼠管家\\")
         #self.searchHeavyPaths.add("K:\\spj\\spj\\")
         #self.searchHeavyPaths.add("J:\\\\榨汁夏\\")
-        # self.searchHeavyPaths.add("I:\\")
+        self.searchHeavyPaths.add("D:\\")
 
         ##########linux  /home/cc/code/python/test/util/cc/duplicateFIle
 
@@ -370,7 +381,7 @@ class FileChecking():
         FileDetailModelDao.truncatetables(FileDetailModelDup.FileDetailModelDup.__tablename__)
         testcachepath=r'D:\filescan.cache'
         if os.path.isfile(testcachepath):
-            os.remove()
+            os.remove(testcachepath)
 
 
     #清理数据，将dup表数据迁移至原表中，dup表该数据进行删除
