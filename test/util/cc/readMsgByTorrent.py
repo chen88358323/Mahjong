@@ -329,9 +329,9 @@ def getTorrDetail(filepath):
     #文件夹最后一层名称
     basename = os.path.split(dirname)[-1]
     txtpath=filepath+basename+'.txt'
-    print( 'basename==>'+basename)
-    print('dirname==>'+dirname)
-    print('txtfile===>'+txtpath)
+    # print( 'basename==>'+basename)
+    # print('dirname==>'+dirname)
+    # print('txtfile===>'+txtpath)
 
     txtfile=open(txtpath,'w+',encoding='utf-8')
 
@@ -415,7 +415,7 @@ def getTorListByDir(torrdir):
 
 
 #入库查重批次个数
-batchsize=50
+batchsize=500
 #torrPathlist 种子路径列表
 # 列表每条记录包括 hcode ,path, filename
 def consumMsg():
@@ -440,7 +440,7 @@ def consumMsg():
                     hashs.append(arr[0])
                     #result dataset  [id ,hcode,path,filename,time]
                 #1.1同一批次中，有重复的hcode，做一次过滤
-                datalist=clearDupTorrHandler(datalist,hashs)
+                datalist,hashs=clearDupTorrHandler(datalist,hashs)
                 #1.查询主数据表，hcode相同既相同
                 dbrs=dbtool.queryByHashCode(hashs)
                 #2.查询重复数据表，hcode path filename 都相同才
@@ -469,8 +469,8 @@ def clearDupTorrHandler(datalist,hashs):
         for dup in duplist:
             msg="重复文件:" +dup[0]+ dup[1]+'\\' + dup[2]
             addDupData(dup[0], dup[1], dup[2], msg)
-        return rslist
-    return datalist
+        return rslist,list(st)
+    return datalist,hashs
 
 
 
@@ -499,13 +499,16 @@ def filterDirtyData(datalist ,dblist,hashs):
     else:
         return  datalist
 
-DUP_DIRNAME= '\\duplicate\\'
+DUP='duplicate'
+DUP_DIRNAME= '\\'+DUP+'\\'
 Enter='\r\n'
 #torrpath 种子原始文件路径
 #新增文件夹，并写日志，打印
-
 def writeDupLog(torrpath,msg):
-    duplicateDir = torrpath + DUP_DIRNAME
+    if( torrpath.endswith(DUP)):
+        duplicateDir=torrpath
+    else:
+        duplicateDir = torrpath + DUP_DIRNAME
     writer = log(duplicateDir, "dirtyData", True)
     writer.writelines("**********dirtyData   start***************" + '\r\n')
     # writer.writelines("扫描文件:" +filearry)
@@ -564,16 +567,22 @@ def addDupData(torrhcode,torrpath,torrfilename,msg):
     # 1.写日志
     writeDupLog(torrpath, msg)
     # 2.move 种子至重复文件夹
-    newtorrpath = torrpath + DUP_DIRNAME  # 该变量为新路径，包含配置的重复文件夹
-    mkdirs(newtorrpath)
-    if os.path.isfile(fpath):
-        print('move' + fpath + 'to ' + newtorrpath + torrfilename)
+    newtorrpath = torrpath   # 该变量为新路径，包含配置的重复文件夹
+
+    if os.path.isfile(fpath) and not torrpath.endswith(DUP):#文件夹已经是重复文件夹名称了，不做处理
+        newtorrpath = torrpath + DUP_DIRNAME
+        mkdirs(newtorrpath)
+        print('move' + fpath + '  to '+Enter + newtorrpath + torrfilename)
         shutil.move(fpath, newtorrpath + torrfilename)
+
     rs = dbtool.querydupTorrByHcodeAndFnAndPath(torrhcode, torrfilename, torrpath)
+
     if rs is not None and len(rs) > 0:
         # 重复路径存在
         return
     else:  # 重复记录表不存在该记录，直接插入
+        # print('********fuckfuck*********')
+        # print(str(rs))
         # 记录新路径，并存放
         # print(torrhcode)
         # print( newtorrpath)
@@ -593,32 +602,32 @@ def addDupData(torrhcode,torrpath,torrfilename,msg):
     # @return False 表示不同文件需要处理
     # ###
     #deprate
-def compareTorfile(tar,dbrs):
-    # dbrs is dbTorFile
-    # [id ,hcode,path,filename,time]
-    # tar is scan file
-    # [hash, path, filename]
-    if tar[0]==dbrs[1]:
-        tarfilepath=tar[1]+tar[2]
-        dbtfilepath=dbrs[2]+dbrs[3]
-        #路径相同，表示同一个文件
-        if tarfilepath==dbtfilepath:
-            return  True
-        else:
-            duplicateDir = tar[1] + '\\duplicate\\'
-            writer = log(duplicateDir, "dirtyData", True)
-            writer.writelines("**********dirtyData   start***************" + '\r\n')
-            writer.writelines("扫描文件:" + str(tar))
-            writer.writelines("数据库文件:" + str(dbrs))
-            writer.writelines("**********dirtyData   done***************" + '\r\n')
-            writer.close()
-            #移动文件
-            shutil.move(tar[1]+'/'+tar[2],duplicateDir+tar[2])
-
-            #插入数据库  也有可能重复
-            dbtool.recorderDulicateTorrent(tar[0],tar[1],tar[2])
-
-            return  False
+# def compareTorfile(tar,dbrs):
+#     # dbrs is dbTorFile
+#     # [id ,hcode,path,filename,time]
+#     # tar is scan file
+#     # [hash, path, filename]
+#     if tar[0]==dbrs[1]:
+#         tarfilepath=tar[1]+tar[2]
+#         dbtfilepath=dbrs[2]+dbrs[3]
+#         #路径相同，表示同一个文件
+#         if tarfilepath==dbtfilepath:
+#             return  True
+#         else:
+#             duplicateDir = tar[1] + '\\duplicate\\'
+#             writer = log(duplicateDir, "dirtyData", True)
+#             writer.writelines("**********dirtyData   start***************" + '\r\n')
+#             writer.writelines("扫描文件:" + str(tar))
+#             writer.writelines("数据库文件:" + str(dbrs))
+#             writer.writelines("**********dirtyData   done***************" + '\r\n')
+#             writer.close()
+#             #移动文件
+#             shutil.move(tar[1]+'/'+tar[2],duplicateDir+tar[2])
+#
+#             #插入数据库  也有可能重复
+#             dbtool.recorderDulicateTorrent(tar[0],tar[1],tar[2])
+#
+#             return  False
 
 
 
@@ -698,7 +707,7 @@ def log(filepath, name,append):
     txtpath = filepath + basename + name + '.txt'
     # print('basename==>' + basename)
     # print('dirname==>' + dirname)
-    print('txtfile===>' + txtpath)
+    # print('txtfile===>' + txtpath)
 
     if(append):
         txtfile = open(txtpath, 'a', encoding='utf-8')
@@ -957,10 +966,11 @@ if __name__ == '__main__':
     #countHalfFiles('D:\\temp\\chachong\\193-性感美女顶级调教 狂操捆绑 强制高潮 爆菊 滴蜡 K9训犬 群P毒龙 乱交露出\\')
     # genhalfTorrent('D:\\temp\\chachong\\')
     #
-    truncatetable()
-    scanTorrentsIntoDB(r'D:\temp\0555\2022-03-01\0555')
-
     #removeFiles(r'D:\temp\0555\2022-03-01\0555')
+    # truncatetable()
+    scanTorrentsIntoDB(r'D:\temp\0555\2022-03-01\0555\b33')
+
+
     #removeFiles('f:\\')
     # removeFiles('g:\\')
     # removeFiles('h:\\')

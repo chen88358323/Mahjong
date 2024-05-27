@@ -28,3 +28,45 @@ WHERE hcode IN (
     GROUP BY hcode
     HAVING COUNT(*) > 1
 );
+
+----查询相同hcode
+
+select f1.id,f1.hcode,f1.path,f1.filename,
+f2.id,f2.hcode,f2.path,f2.filename
+FROM torrents_dup f1
+JOIN torrents_dup f2 ON f1.hcode = f2.hcode
+
+
+
+	SELECT
+    f1.id AS f1_id,
+    f1.hcode AS f1_hcode,
+    f1.path AS f1_path,
+    f1.filename AS f1_filename,
+    f2.id AS f2_id,
+    f2.hcode AS f2_hcode,
+    f2.path AS f2_path,
+    f2.filename AS f2_filename
+FROM
+    torrents f1
+JOIN
+    torrents_dup f2
+ON
+    f1.hcode = f2.hcode order by f1_hcode
+
+-----删除重复数据
+
+select *
+FROM torrents_dup f1
+JOIN torrents_dup f2 ON f1.filename = f2.filename and  f1.path = f2.path AND f1.id != f2.id;
+
+
+ (select f1.hcode,f1.id ,f1.path,f1.filename from torrents  f1
+ where f1.filename like'%私拍%') union
+(select f2.hcode,f2.id,f2.path,f2.filename from torrents_dup f2
+where f2.filename like '%私拍%' )
+
+
+
+delete from torrents where path like 'D:\\temp\\0555\\2022-03-01\\0555\\best10\\%'
+delete from torrents_dup where path like 'D:\\temp\\0555\\2022-03-01\\0555\\best10\\%'
