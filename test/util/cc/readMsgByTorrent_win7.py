@@ -668,7 +668,7 @@ if __name__ == '__main__':
     # filterBigfiles('D:\\Program20190718\\2022-03-01\\1229\\1\\', 2000)
     # filterBigfiles('D:\\Program20190718\\2022-03-01\\1229\\5\\', 2000)
     # findTorrentByDirName('D:\\temp\\0555\\', 'Irisadamsone','thread-1')
-    findTorrentByDirName('D:\\temp\\0555\\2022-03-01\\0555\\', 'av8.la@HJ220819-1', 'thread-21')
+    findTorrentByDirName('D:\\temp\\0555\\2022-03-01\\0555\\', '373P', 'thread-21')
     # findTorrentByDirName('D:\\temp\\0555\\', '长腿高跟 脸穴同框自慰玩穴 开档骚丝袜 高清7', 'thread-1')
     # findTorrentByDirName('D:\\temp\\0555\\', '长腿高跟 脸穴同框自慰玩穴 开档骚丝袜 高清7','thread-1')
 

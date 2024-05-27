@@ -11,7 +11,7 @@ con = pymysql.connect(
 )
 def recorder(hcode ,path, filename):
 	cur=con.cursor()
-
+	print(recorder+path)
 	sql="insert into torrents(creattime,hcode,path," \
 		"filename) " \
 		"values(now(),'%s','%s','%s')"
@@ -22,31 +22,35 @@ def recorder(hcode ,path, filename):
 
 def recorderDulicateTorrent(hcode, path, filename):
 	try:
+		print('recorderDulicateTorrent'+path)
 		cur = con.cursor()
-		sql = "insert into duplicatetor(creattime,hcode,path," \
+		sql = "insert into torrents_dup(creattime,hcode,path," \
 			  "filename) " \
 			  "values(now(),%s,%s,%s)"
-		cur.execute(sql , (hcode, path, filename))
+		cur.execute(sql ,(hcode, path, filename))
 	# cur.executemany(sql %(hcode ,path, filename))
 		con.commit()
 	except Exception as e:
-		con.rollback()
+		print("recorderDulicateTorrent插入失败 Exception" + hcode+'  '+path+'  '+ filename)
 		print("recorderDulicateTorrent插入失败 Exception"+str(e))
 		return  False
 	except pymysql.err.IntegrityError as due:
+		print("recorderDulicateTorrent插入失败 Exception" + hcode + '  ' + path + '  ' + filename)
 		# Map some error codes to IntegrityError, since they seem to be
 		# misclassified and Django would prefer the more logical place.
-		con.rollback()
 		print("recorderDulicateTorrent插入失败 IntegrityError"+str(due))
 		return False
 	finally:
 		cur.close()
 
+
+# def queryTorrentsInHcode():
+
 def delDulicateTorrent(hashs):
 	res=True
 	cur=con.cursor()
 	try:
-		sql = "delete from  duplicatetor  where  duplicatetor.id in ('{}')".format("','".join(hashs))
+		sql = "delete from torrents_dup  where torrents_dup.id in ('{}')".format("','".join(hashs))
 		cur.execute(sql)
 		con.commit()
 		# 获取查询结果
@@ -75,7 +79,7 @@ def queryduplicatetor():
 	results=[]
 	cur=con.cursor()
 	try:
-		sql = "select * from  duplicatetor  "
+		sql = "select * from torrents_dup  "
 			  # ' (' + ','.join('?'*len(hashs)) + ')'
 		cur.execute(sql)
 		# 获取查询结果
@@ -94,8 +98,34 @@ def queryduplicatetor():
 		# con.close()
 		cur.close()
 		return results
+#@return  format   list [id ,hcode,path,filename,time]
+#根据hcode 文件名查询是否存在记录
+def querydupTorrByHcodeAndFnAndPath(hcode,fn,fpath):
+	results=[]
+	cur=con.cursor()
+	try:
+		sql = "select * from torrents_dup td  where td.hcode =%s " \
+			  "and td.filename=%s" \
+			  "and td.path=%s"
+		conditionval=(hcode,fn,fpath)
+			  # ' (' + ','.join('?'*len(hashs)) + ')'
+		cur.execute(sql,conditionval)
+		# 获取查询结果
+		results = cur.fetchall()
+		#print("query result:" + str(results))
+	# if results is not None and len(results) >0:
+	# 	for data in results:
+	except Exception as e:
+		print("queryByHashCode失败 Exception"+str(e))
+	except pymysql.err.IntegrityError as due:
+		# Map some error codes to IntegrityError, since they seem to be
+		# misclassified and Django would prefer the more logical place.
+		print("queryByHashCode IntegrityError"+str(due))
 
-
+	finally:
+		# con.close()
+		cur.close()
+		return results
 
 def recoderbatch(list):
 	cur = con.cursor()
@@ -109,6 +139,7 @@ def recoderbatch(list):
 		return True
 	except Exception as e:
 		con.rollback()
+		print("批量插入失败 Exception" + str(list))
 		print("批量插入失败 Exception"+str(e))
 		return  False
 	except pymysql.err.IntegrityError as due:
@@ -120,18 +151,54 @@ def recoderbatch(list):
 	finally:
 		# con.close()
 		cur.close()
+def truncateTable(tablename):
+	cur = con.cursor()
+	try:
+		sql = "truncate torrents"
+		cur.execute(sql)
+		sql = "truncate torrents_dup"
+		cur.execute(sql)
+		con.commit()
+	except Exception as e:
+		con.rollback()
+		print("truncateTable Exception" + str(list))
+		print("truncateTable Exception" + str(e))
+	finally:
+		# con.close()
+		cur.close()
+# def truncateTable(tablename):
+# 	try:
+# 		with con.cursor() as cursor:
+# 			# SQL TRUNCATE TABLE 语句
+# 			sql = "TRUNCATE TABLE `{}`".format(tablename)
+# 			cursor.execute(sql)
+#
+# 		# 提交事务
+# 		con.commit()
+#
+# 	except pymysql.MySQLError as e:
+# 		print("Error: unable to truncate table", e)
+# 		print("truncateTable Exception" + str(tablename))
+# 		print("truncateTable Exception" + str(e))
+# 		# 关闭数据库连接
+# 		# cursor.close()
+# 		# con.close()
+
 
 
 
 def queryByHashCode(hashs):
-	results=[]
 	cur=con.cursor()
+	rs=[]
 	try:
 		sql = "select * from  torrents  where  torrents.hcode in ('{}')".format("','".join(hashs))
 			  # ' (' + ','.join('?'*len(hashs)) + ')'
 		cur.execute(sql)
 		# 获取查询结果
 		results = cur.fetchall()
+
+		rs=[list(row) for row in results]
+
 		#print("query result:" + str(results))
 	# if results is not None and len(results) >0:
 	# 	for data in results:
@@ -145,12 +212,16 @@ def queryByHashCode(hashs):
 	finally:
 		# con.close()
 		cur.close()
-		return results
+		return rs
 
 
 
-
-
+if __name__ == '__main__':
+	truncateTable('')
+	recorderDulicateTorrent('111', 'D:\temp\b31\2', '11')
+	recorderDulicateTorrent('121','D:\\temp\\b31\\2','11')
+	truncateTable('')
+	# truncateTable('torrents')
 # 增加告警信息
 #msg 错误信息 site 位置
 # def addAlartLog(msg,site):
