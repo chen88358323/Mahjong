@@ -1,8 +1,10 @@
 import datetime
 from collections import ChainMap
 import os
-from test.util.cc.duplicateFIle.cc.model import FileDetailModelDup, FileDetailModel, FileDetailModelDao,LocalCache
+from test.util.cc.duplicateFIle.cc.model import FileDetailModel, LocalCache
 from test.util.cc.duplicateFIle.cc.utils import logger,encryutil,dirutil
+from test.util.cc.duplicateFIle.cc.service import FileDetailService
+
 
 #TODO  增加虚拟盘符支持
 #TODO  ES增加
@@ -54,7 +56,6 @@ class FileChecking():
     #清理文件列表中可能存在的重复数据
     def __clearFileObjList(self,fileObjList,fileCodeSet):
         if len(fileObjList)!=len(fileCodeSet):
-
             tarlist=[]
             duplist=[]
             #遍历，生成tarlist
@@ -62,17 +63,18 @@ class FileChecking():
                 if fileobj.hcode in fileCodeSet:
                     fileCodeSet.remove(fileobj.hcode)
                     tarlist.append(fileobj)
-
-            dulicatelist= list(set(fileObjList)-set(tarlist))
-            if(dulicatelist is not None and len(dulicatelist))>0:
-                logger.log.error("上传数据集存在重复数据" + str(len(dulicatelist)))
-                for fileobj in dulicatelist:
-                    fileobjdup= FileDetailModelDao.convert2FileDetailModelDup(fileobj)
+                else:
+                    print('2')
+                    print(str(type(fileobj)))
+                    fileobjdup = FileDetailService.convert2FileDetailModelDup(fileobj)
+                    print(str(type(fileobjdup)))
                     duplist.append(fileobjdup)
+
+            if(duplist is not None and len(duplist))>0:
+                logger.log.error("上传数据集存在重复数据" + str(len(duplist)))
                 #增加重复数据
-                FileDetailModelDao.addBatch(duplist)
+                FileDetailService.addFileDetailDupBatch(duplist)
                 duplist.clear()
-                dulicatelist.clear()
 
             fileObjList=tarlist
 
@@ -115,7 +117,6 @@ class FileChecking():
 
                             self.__batchAndClear(fileObjList, fileCodeSet)
                             fileObjList.clear()
-                            print('fileObjList=========>' + str(len(fileObjList)))
                         obj = self.__buildFileDetailModel(filename, dirpath, driver, platformscan,virtualPath)
                         fileObjList.append(obj)
                         fileCodeSet.add(obj.hcode)
@@ -126,7 +127,6 @@ class FileChecking():
 
                     self.__batchAndClear(fileObjList, fileCodeSet)
                     fileObjList.clear()
-                    print('fileObjList=========>' + str(len(fileObjList)))
             #存储全部缓存
             LocalCache.save_snapshot(path, addcache)
         else:
@@ -170,7 +170,7 @@ class FileChecking():
                 hashs.append(v)
                 pathes.append(dn)
                 filenames.append(fn)
-            FileDetailModelDao.delBatchByHC_PATH_FN(hashs,pathes,filenames)
+            FileDetailService.delBatchByHC_PATH_FN(hashs,pathes,filenames)
         #3. TODO ADD ES
 
     #根据文件列表，批量更新数据库
@@ -188,8 +188,7 @@ class FileChecking():
                     i = 0
                     self.__batchAndClear(fileObjList, fileCodeSet)
                     fileObjList.clear()
-                    print('fileObjList====------=====>' + str(len(fileObjList)))
-                obj = self.__buildFileDetailModelByPath(f,driver, platformscan,virtualPath )
+                    obj = self.__buildFileDetailModelByPath(f,driver, platformscan,virtualPath )
                 fileObjList.append(obj)
                 fileCodeSet.add(obj.hcode)
                 # file.systemdriver + file.path + file.filename
@@ -198,14 +197,14 @@ class FileChecking():
                 i += 1
             self.__batchAndClear(fileObjList, fileCodeSet)
             fileObjList.clear()
-            print('fileObjList====------=====>' + str(len(fileObjList)))
         return addcache
         # 构建文件列表构建详细信息对象
     def __buildFileDetailModelByPath(self, filepath, driver, platformscan,virtualPath):
         filename,filedir = dirutil.splitPath2fnameDname(filepath,driver)
 
         portion = os.path.splitext(filename)
-
+        # 解决路径中存在\\，无法读取的问题
+        filepath=filepath.replace("\\\\", "\\")
         # 头尾计算md5
         code, filesize = encryutil.calc_halffile_hash(filepath)
         isDir = 0
@@ -220,7 +219,8 @@ class FileChecking():
         portion = os.path.splitext(filename)
         # if self.__isScanFile(portion[1]):
         fullfilepath = os.path.join(dirpath, filename)
-
+        #解决路径中存在\\，无法读取的问题
+        fullfilepath = fullfilepath.replace("\\\\", "\\")
         # 头尾计算md5
         # code ,filesize = encryutil.calc_file_hash(fullfilepath)
         # 尾计算md5
@@ -243,7 +243,7 @@ class FileChecking():
     def __batchAndClear(self,fileObjList,fileCodeSet):
         if (fileObjList is not None and len(fileObjList) > 0):
             fileObjList = self.__clearFileObjList(fileObjList, fileCodeSet)
-            FileDetailModelDao.addBatch(fileObjList)
+            FileDetailService.addFileDetailBatch(fileObjList)#
             fileObjList.clear()
             fileCodeSet.clear()
             # print('fileObjList===***======>' + str(len(fileObjList)))
@@ -280,15 +280,15 @@ class FileChecking():
     #比对两个数据表内的数据
     def __showReault(self):
         dupfilelist=[]
-        num= FileDetailModelDao.querydupfileCounts()
+        num= FileDetailService.querydupfileCounts()#FileDetailService
         if(num>0):
             print('show result duplicate num:'+str(num))
             #1.获取重复数据列表
-            dupfilelist= FileDetailModelDao.queryAlldupfiles()
+            dupfilelist= FileDetailService.queryAlldupfiles()
             if dupfilelist is not None and len(dupfilelist)>0:
                 for dupfile in dupfilelist:
                     # 2.查询对应数据原始数据对应列表
-                    file= FileDetailModelDao.queryfilebycode(dupfile.hcode)
+                    file= FileDetailService.queryfilebycode(dupfile.hcode)
                     if file is None:  # 这里好像判断没啥用，不如直接返回
                         logger.log.info(dupfile.hcode + " 没有对应filedetail表的记录")
                     else:
@@ -314,14 +314,17 @@ class FileChecking():
         # self.__exchange()#清理数据，将
         # os._exit(0)
 
-        ans = input()
-        print("慎用慎用，只在测试环境输入YES,拒绝请按其他键")
-        if ans == "YES":
-            #清理数据 DB CACHE
-            self.__cleardata4Test()
-        else:
-            print("未清理表数据")
+        # print("慎用慎用，只在测试环境输入YES,拒绝请按其他键")
+        # ans = input()
+        # if ans == "YES":
+        #     #清理数据 DB CACHE
+        #     self.__cleardata4Test()
+        # else:
+        #     print("未清理表数据")
 
+
+
+        self.__cleardata4Test()
         #1.加载待扫描路径
         self.__getSearchHeavyPaths()
         # 2.获取当前文件根路径的缓存文件，没有进行全表扫描
@@ -377,8 +380,7 @@ class FileChecking():
         # self.searchHeavyPaths.add("K:\\")
 
     def __cleardata4Test(self):
-        FileDetailModelDao.truncatetables(FileDetailModel.FileDetailModel.__tablename__)
-        FileDetailModelDao.truncatetables(FileDetailModelDup.FileDetailModelDup.__tablename__)
+        FileDetailService.truncateTables()
         testcachepath=r'D:\filescan.cache'
         if os.path.isfile(testcachepath):
             os.remove(testcachepath)
@@ -396,9 +398,9 @@ class FileChecking():
         #2.获取两边信息
         for code in hcodelist:
             # 3.convert存储,删除
-            file    = FileDetailModelDao.updateFileBycode(code)
-            dupfile = FileDetailModelDao.querydupfilebycode(code)
-            FileDetailModelDao.delDupFileByID(dupfile.id, dupfile.hcode)
+            FileDetailService.updateFileBycode(code)
+            dupfile = FileDetailService.querydupfilebycode(code)
+            FileDetailService.delDupFileByID(dupfile.id, dupfile.hcode)
 
 
 

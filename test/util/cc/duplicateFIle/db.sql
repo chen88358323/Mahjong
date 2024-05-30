@@ -78,6 +78,19 @@ or a.filename !=b.filename ) limit 5000;
 SELECT  f.systemdriver  FROM filedetails f GROUP BY f.systemdriver
 
 
+---------有些数据没有配置
+SELECT count(*) FROM  filedetails_dup where virdriver ='None'
+SELECT count(*) FROM  filedetails where virdriver ='None'
+update filedetails  set virdriver='F' where  virdriver ='None'
+update filedetails_dup  set virdriver='F' where  virdriver ='None'
+
+'ZB','SPJ','SP','SPJ-A','SPJHJ',#spj
+        'I',  #zp
+        'E',  #DS  HJ   MD  MJ
+        'N',  #pic jvid sm xz
+        'T',  #TUI
+        'F',  #zphj
+---------
 
 SELECT COUNT(*)
 FROM torr.filedetails  a,torr.filedetails_dup b where a.hcode=b.hcode limit 25000;

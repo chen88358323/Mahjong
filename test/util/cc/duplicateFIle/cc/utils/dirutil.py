@@ -101,7 +101,15 @@ def splitPath2fnameDname(fullpath, driver):
 category=['spj','sp','ds','hj','mj','md','pic','jvid','xz','sm','of','tui','pic','zp',]
 
 #虚拟分区，为区分每个分区的唯一性
-virtualLocation=['ZB','SPJ','SP','SPJ-A','SPJHJ','E','H','I','J','K','G','O','V','X','N','T','','Z',]
+virtualLocation=['ZB','SPJ','SP','SPJ-A','SPJHJ',#spj
+        'I',  #zp
+        'E',  #DS  HJ   MD  MJ
+        'N',  #pic jvid sm xz
+        'T',  #TUI
+        'F',  #zphj
+        'OF',  #cb of
+
+                 'H','J','K','G','O','V','Z',]
 def getVirtualPathByROOTDir(root_path, file_extension):
 
         # 确保扩展名前有一个点

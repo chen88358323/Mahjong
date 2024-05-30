@@ -41,7 +41,9 @@ def queryfilebycode(hcode :str ):
     # Create a session to interact with the database
     with Session() as session:
         # filelist=session.query(FileDetailModel).filter_by(FileDetailModel.hcode==hcode,FileDetailModel.filetype==filename).all()
-        file = session.query(FileDetailModel).filter(FileDetailModel.hcode == hcode).first()
+        file = session.query(FileDetailModel).\
+            filter(FileDetailModel.hcode == hcode
+                   ).first()
 
     return file
 
@@ -89,27 +91,14 @@ def querydupfileCounts():
         num=session.query(func.count(FileDetailModel.id)).scalar()
     return num
 
-#off  表示 offset 偏移量
-#lim  表示limit 查询数量
-def queryAlldupfilesByOffset(off,lim):
-    with Session() as session:
-        num=session.query(FileDetailModelDup).offset(off).limit(lim)
-    return num
 
-def queryAlldupfiles():
-    with Session() as session:
-        dupfilelist=session.query(FileDetailModelDup).\
-            order_by(FileDetailModelDup.creattime.desc()).all()
-        print(type(dupfilelist))
-        for f in dupfilelist:
-            print(f)
-    return dupfilelist
 
 def truncatetables(tablename):
     sql="truncate table "+tablename
     with Session() as session:
         # filelist=session.query(FileDetailModel).filter_by(FileDetailModel.hcode==hcode,FileDetailModel.filetype==filename).all()
         filelist = session.execute(text(sql))
+        session.commit()
         logger.log.info("sql " + sql + " is done")
 
 @strutil.getDbTime
@@ -123,7 +112,7 @@ def addBatch(list):#todo 唯一性失败，优化细分
     except SQLAlchemyError as e:
         print('SQLAlchemyError '+str(e))
         se.rollback()
-        clearDuplicatRecorders(list)
+        # clearDuplicatRecorders(list)
     except	IntegrityError as e:
         print('IntegrityError ' + str(e))
         se.rollback()
@@ -132,22 +121,15 @@ def addBatch(list):#todo 唯一性失败，优化细分
         se.close()
 
 
-def convert2FileDetailModelDup(fileDetailModel):
-    dupobj = FileDetailModelDup(fileDetailModel.hcode, fileDetailModel.isdir,
-                                fileDetailModel.path, fileDetailModel.filename, fileDetailModel.filetype,
-                                fileDetailModel.systemdriver,fileDetailModel.platformscan,None,None,
-                                fileDetailModel.filesize,fileDetailModel.virdriver)
-    return dupobj
+
 
 #select  where  hcode in
 @strutil.getDbTime
-def queryFileDetailModelInHcode(filedetailmodeList):
-    hashs = []
-    for filedetails in filedetailmodeList:
-        hashs.append(filedetails.hcode)
+def queryFileDetailModelInHcode(hashs):
+
     with Session() as se:
         rows = se.query(FileDetailModel).filter(FileDetailModel.hcode.in_(hashs)).all()
-    return  rows,hashs
+    return  rows
 
 #根据文件名，路径，hcode删除数据，与删除缓存同时使用
 @strutil.getDbTime
@@ -167,6 +149,7 @@ def convertDupFile2File(file,dupfile):
     file.filetype=dupfile.filetype
     file.systemdriver=dupfile.systemdriver
     file.platformscan=dupfile.platformscan
+    file.virdriver=dupfile.virdriver
     file.filesize=dupfile.filesize
     file.creattime=dupfile.creattime
     file.modifiedtime=datetime.datetime.now()
@@ -174,46 +157,45 @@ def convertDupFile2File(file,dupfile):
 
 #todo 出现递归异常了。。。
 #批量插入会有重复数据，需要进行清理
-def clearDuplicatRecorders(filedetailmodeList):
-    rows,hashs=queryFileDetailModelInHcode(filedetailmodeList)
-        # [Shoe.query.filter_by(id=id).one() for id in my_list_of_ids]
-        # res=[row.to_dict() for row in rows]
-    if rows is not None and len(rows)>0:#获取hcode重复数据
-        logger.log.info("数据插入中，该批次存在重复数据")
-        duplist=[]
-        for dbrecoder in rows:
-            logger.log.error("dulicate dbrecoder  hcode:" + dbrecoder.hcode + '  filename' + dbrecoder.filename)
-            idx=hashs.index(dbrecoder.hcode)
-            hashs.pop(idx)
-            removefd=filedetailmodeList.pop(idx)#FileDetailModel对象需要转化为FileDetailModelDup对象
-
-            dbpath=dbrecoder.systemdriver+dbrecoder.path+dbrecoder.filename
-            removedpath=removefd.systemdriver+removefd.path+removefd.filename
-            if dbpath!=removedpath:
-                dupobj = convert2FileDetailModelDup(removefd)
-                duplist.append(dupobj)
-                logger.log.error("dbrecoder hcode:" + dbrecoder.hcode)
-                logger.log.error("dbrecoder " + '  filename:' + dbrecoder.systemdriver + dbrecoder.path + osseparator + strutil.clearpath(dbrecoder.filename))
-                logger.log.error("scanfile  " + '  filename:' + removefd.systemdriver + removefd.path + osseparator + strutil.clearpath(removefd.filename))
-            else:
-                logger.log.error("很奇怪为什么会出现这句")
-                logger.log.error(
-                    "dbrecoder " + '  filename:' + dbrecoder.systemdriver + dbrecoder.path + osseparator + strutil.clearpath(
-                        dbrecoder.filename))
-                logger.log.error(
-                    "scanfile  " + '  filename:' + removefd.systemdriver + removefd.path + osseparator + strutil.clearpath(
-                        removefd.filename))
-
-            #TODO 将重复数据装入torr-dupilicate表
-        if(duplist is not None and len(duplist)>0):
-            logger.log.info("重复数据更新至filedetail_dup表中，数量" + str(len(duplist)))
-            addBatch(duplist)
-            duplist.clear()
-        if(filedetailmodeList is not None and len(filedetailmodeList)>0):#清理后还有待插入项
-            logger.log.info("去重后该批次数据 " + str(len(filedetailmodeList)))
-            addBatch(filedetailmodeList)
-            filedetailmodeList.clear()
-        else:
-            logger.log.error("去重后该批次没有需要插入的数据")
-    else:
-        logger.log.error("数据插入中，该批次不存在重复数据")
+# def clearDuplicatRecorders(filedetailmodeList):
+#     hashs = []
+#     for filedetails in filedetailmodeList:
+#         hashs.append(filedetails.hcode)
+#     rows=queryFileDetailModelInHcode(hashs)
+#         # [Shoe.query.filter_by(id=id).one() for id in my_list_of_ids]
+#         # res=[row.to_dict() for row in rows]
+#     if rows is not None and len(rows)>0:#获取hcode重复数据
+#         logger.log.info("数据插入中，该批次总数:"+str(len(filedetailmodeList))
+#                         +"存在重复数据条数:"+str(len(rows)))
+#         duplist=[]
+#         for dbrecoder in rows:
+#             logger.log.error("dulicate dbrecoder  hcode:" +
+#                              dbrecoder.hcode + '  filename' + dbrecoder.filename)
+#             idx=hashs.index(dbrecoder.hcode)
+#             hashs.pop(idx)
+#             removefd=filedetailmodeList.pop(idx)#FileDetailModel对象需要转化为FileDetailModelDup对象
+#
+#             dbpath=dbrecoder.systemdriver+dbrecoder.path+dbrecoder.filename
+#             removedpath=removefd.systemdriver+removefd.path+removefd.filename
+#             if dbpath!=removedpath:
+#                 dupobj = convertDupFile2File(removefd)
+#                 duplist.append(dupobj)
+#                 logger.log.error("dbrecoder hcode:" + dbrecoder.hcode)
+#                 logger.log.error("dbrecoder " + '  filename:' + dbrecoder.systemdriver + dbrecoder.path + osseparator + strutil.clearpath(dbrecoder.filename))
+#                 logger.log.error("scanfile  " + '  filename:' + removefd.systemdriver + removefd.path + osseparator + strutil.clearpath(removefd.filename))
+#             else:
+#                 logger.log.error("重负扫描的数据，可忽略")
+#
+#             #TODO 将重复数据装入torr-dupilicate表
+#         if(duplist is not None and len(duplist)>0):
+#             logger.log.info("重复数据更新至filedetail_dup表中，数量" + str(len(duplist)))
+#             FileDetailModelDupDao(duplist)
+#             duplist.clear()
+#         if(filedetailmodeList is not None and len(filedetailmodeList)>0):#清理后还有待插入项
+#             logger.log.info("去重后该批次数据 " + str(len(filedetailmodeList)))
+#             addBatch(filedetailmodeList)
+#             filedetailmodeList.clear()
+#         else:
+#             logger.log.error("去重后该批次没有需要插入的数据")
+#     else:
+#         logger.log.error("数据插入中，该批次不存在重复数据")
