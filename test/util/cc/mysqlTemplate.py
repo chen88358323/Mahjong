@@ -1,6 +1,7 @@
-
 import pymysql
+import loggerTemplate
 
+loger=loggerTemplate.log
 con = pymysql.connect(
 	host='localhost',
 	port=3306,
@@ -11,7 +12,7 @@ con = pymysql.connect(
 )
 def recorder(hcode ,path, filename):
 	cur=con.cursor()
-	print(recorder+path)
+	loger.info(recorder+path)
 	sql="insert into torrents(creattime,hcode,path," \
 		"filename) " \
 		"values(now(),'%s','%s','%s')"
@@ -22,7 +23,7 @@ def recorder(hcode ,path, filename):
 
 def recorderDulicateTorrent(hcode, path, filename):
 	try:
-		print('recorderDulicateTorrent'+path)
+		loger.info('recorderDulicateTorrent '+filename+'  '+path)
 		cur = con.cursor()
 		sql = "insert into torrents_dup(creattime,hcode,path," \
 			  "filename) " \
@@ -31,14 +32,14 @@ def recorderDulicateTorrent(hcode, path, filename):
 	# cur.executemany(sql %(hcode ,path, filename))
 		con.commit()
 	except Exception as e:
-		print("recorderDulicateTorrent插入失败 Exception" + hcode+'  '+path+'  '+ filename)
-		print("recorderDulicateTorrent插入失败 Exception"+str(e))
+		loger.info("recorderDulicateTorrent插入失败 Exception" + hcode+'  '+path+'  '+ filename)
+		loger.info("recorderDulicateTorrent插入失败 Exception"+str(e))
 		return  False
 	except pymysql.err.IntegrityError as due:
-		print("recorderDulicateTorrent插入失败 Exception" + hcode + '  ' + path + '  ' + filename)
+		loger.info("recorderDulicateTorrent插入失败 Exception" + hcode + '  ' + path + '  ' + filename)
 		# Map some error codes to IntegrityError, since they seem to be
 		# misclassified and Django would prefer the more logical place.
-		print("recorderDulicateTorrent插入失败 IntegrityError"+str(due))
+		loger.info("recorderDulicateTorrent插入失败 IntegrityError"+str(due))
 		return False
 	finally:
 		cur.close()
@@ -55,17 +56,17 @@ def delDulicateTorrent(hashs):
 		con.commit()
 		# 获取查询结果
 		# results = cur.fetchall()
-		#print("query result:" + str(results))
+		#loger.info("query result:" + str(results))
 	except Exception as e:
 		res = False
 		con.rollback()
-		print("queryByHashCode失败 Exception"+str(e))
+		loger.info("queryByHashCode失败 Exception"+str(e))
 	except pymysql.err.IntegrityError as due:
 		res = False
 		con.rollback()
 		# Map some error codes to IntegrityError, since they seem to be
 		# misclassified and Django would prefer the more logical place.
-		print("queryByHashCode IntegrityError"+str(due))
+		loger.info("queryByHashCode IntegrityError"+str(due))
 
 	finally:
 		# con.close()
@@ -84,15 +85,15 @@ def queryduplicatetor():
 		cur.execute(sql)
 		# 获取查询结果
 		results = cur.fetchall()
-		#print("query result:" + str(results))
+		#loger.info("query result:" + str(results))
 	# if results is not None and len(results) >0:
 	# 	for data in results:
 	except Exception as e:
-		print("queryByHashCode失败 Exception"+str(e))
+		loger.info("queryByHashCode失败 Exception"+str(e))
 	except pymysql.err.IntegrityError as due:
 		# Map some error codes to IntegrityError, since they seem to be
 		# misclassified and Django would prefer the more logical place.
-		print("queryByHashCode IntegrityError"+str(due))
+		loger.info("queryByHashCode IntegrityError"+str(due))
 
 	finally:
 		# con.close()
@@ -112,15 +113,15 @@ def querydupTorrByHcodeAndFnAndPath(hcode,fn,fpath):
 		cur.execute(sql,conditionval)
 		# 获取查询结果
 		results = cur.fetchall()
-		#print("query result:" + str(results))
+		#loger.info("query result:" + str(results))
 	# if results is not None and len(results) >0:
 	# 	for data in results:
 	except Exception as e:
-		print("queryByHashCode失败 Exception"+str(e))
+		loger.info("queryByHashCode失败 Exception"+str(e))
 	except pymysql.err.IntegrityError as due:
 		# Map some error codes to IntegrityError, since they seem to be
 		# misclassified and Django would prefer the more logical place.
-		print("queryByHashCode IntegrityError"+str(due))
+		loger.info("queryByHashCode IntegrityError"+str(due))
 
 	finally:
 		# con.close()
@@ -139,19 +140,19 @@ def recoderbatch(list):
 		return True
 	except Exception as e:
 		con.rollback()
-		print("批量插入失败 Exception" + str(list))
-		print("批量插入失败 Exception"+str(e))
+		loger.debug("批量插入失败 Exception" + str(list))
+		loger.info("批量插入失败 Exception"+str(e))
 		return  False
 	except pymysql.err.IntegrityError as due:
 		# Map some error codes to IntegrityError, since they seem to be
 		# misclassified and Django would prefer the more logical place.
 		con.rollback()
-		print("批量插入失败 IntegrityError"+str(due))
+		loger.debug("批量插入失败 IntegrityError"+str(due))
 		return False
 	finally:
 		# con.close()
 		cur.close()
-def truncateTable(tablename):
+def truncateTable():
 	cur = con.cursor()
 	try:
 		sql = "truncate torrents"
@@ -161,8 +162,8 @@ def truncateTable(tablename):
 		con.commit()
 	except Exception as e:
 		con.rollback()
-		print("truncateTable Exception" + str(list))
-		print("truncateTable Exception" + str(e))
+		loger.info("truncateTable Exception" + str(list))
+		loger.info("truncateTable Exception" + str(e))
 	finally:
 		# con.close()
 		cur.close()
@@ -177,9 +178,9 @@ def truncateTable(tablename):
 # 		con.commit()
 #
 # 	except pymysql.MySQLError as e:
-# 		print("Error: unable to truncate table", e)
-# 		print("truncateTable Exception" + str(tablename))
-# 		print("truncateTable Exception" + str(e))
+# 		loger.info("Error: unable to truncate table", e)
+# 		loger.info("truncateTable Exception" + str(tablename))
+# 		loger.info("truncateTable Exception" + str(e))
 # 		# 关闭数据库连接
 # 		# cursor.close()
 # 		# con.close()
@@ -199,15 +200,15 @@ def queryByHashCode(hashs):
 
 		rs=[list(row) for row in results]
 
-		#print("query result:" + str(results))
+		#loger.info("query result:" + str(results))
 	# if results is not None and len(results) >0:
 	# 	for data in results:
 	except Exception as e:
-		print("queryByHashCode失败 Exception"+str(e))
+		loger.info("queryByHashCode失败 Exception"+str(e))
 	except pymysql.err.IntegrityError as due:
 		# Map some error codes to IntegrityError, since they seem to be
 		# misclassified and Django would prefer the more logical place.
-		print("queryByHashCode IntegrityError"+str(due))
+		loger.info("queryByHashCode IntegrityError"+str(due))
 
 	finally:
 		# con.close()
@@ -226,7 +227,7 @@ if __name__ == '__main__':
 #msg 错误信息 site 位置
 # def addAlartLog(msg,site):
 # 	cur = con.cursor()
-# 	print('alert msg'+msg+'  site:'+site)
+# 	loger.info('alert msg'+msg+'  site:'+site)
 # 	sql = "insert into log(starttime,site,msg," \
 # 		  ") " \
 # 		  "value(now(),'%s','%s')"
