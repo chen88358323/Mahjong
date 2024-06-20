@@ -70,3 +70,12 @@ where f2.filename like '%私拍%' )
 
 delete from torrents where path like 'D:\\temp\\0555\\2022-03-01\\0555\\best10\\%'
 delete from torrents_dup where path like 'D:\\temp\\0555\\2022-03-01\\0555\\best10\\%'
+
+
+-----查询该目录下与之重复的文件列表
+SELECT concat(a.path,'\\',a.filename) as src,
+ concat(b.path,'\\',b.filename) as dup,
+a.hcode,a.id ,b.id
+FROM torr.torrents  a,torr.torrents_dup b
+where (   a.hcode=b.hcode and
+ a.path like '%b32%'   ) limit 1000;

@@ -333,7 +333,7 @@ def filterDownFiles(torrpath, filepath, subDirName):
     for samefile in rslist:
         print(" ****   ")
         # print(torrDict[samefile])
-        print(os.path.basename(torrDict[samefile]))
+        print(os.path.basename(torrDict[samefile]))#文件名
         newTorrFile = torrDonePath + os.path.basename(torrDict[samefile])
 
         finishFile = finishFilePath + samefile
@@ -389,7 +389,7 @@ def geneTorrentDic(torrpath,skipTag):
                         print("error " + filename)
                         continue
 
-
+    #返回字典对象 ，key 种子文件路径  种子对应下载文件列表
     torrDict = dict(zip(torrlist, torrNamelist))
     return torrDict
 

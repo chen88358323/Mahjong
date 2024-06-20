@@ -128,7 +128,7 @@ def querydupTorrByHcodeAndFnAndPath(hcode,fn,fpath):
 		cur.close()
 		return results
 
-def recoderbatch(list):
+def recoderbatch(list,num):
 	cur = con.cursor()
 	try:
 		sql = "insert into torrents(creattime,hcode,path," \
@@ -140,14 +140,14 @@ def recoderbatch(list):
 		return True
 	except Exception as e:
 		con.rollback()
-		loger.debug("批量插入失败 Exception" + str(list))
-		loger.info("批量插入失败 Exception"+str(e))
+		loger.error('num'+str(num)+"批量插入失败 Exception" + str(list))
+		loger.error('num'+str(num)+"批量插入失败 Exception"+str(e))
 		return  False
 	except pymysql.err.IntegrityError as due:
 		# Map some error codes to IntegrityError, since they seem to be
 		# misclassified and Django would prefer the more logical place.
 		con.rollback()
-		loger.debug("批量插入失败 IntegrityError"+str(due))
+		loger.error('num'+str(num)+"批量插入失败 IntegrityError"+str(due))
 		return False
 	finally:
 		# con.close()
@@ -155,9 +155,10 @@ def recoderbatch(list):
 def truncateTable():
 	cur = con.cursor()
 	try:
-		sql = "truncate torrents"
+		sql = "TRUNCATE TABLE torrents"
 		cur.execute(sql)
-		sql = "truncate torrents_dup"
+		con.commit()
+		sql = "TRUNCATE TABLE torrents_dup"
 		cur.execute(sql)
 		con.commit()
 	except Exception as e:

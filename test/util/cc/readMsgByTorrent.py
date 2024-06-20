@@ -9,7 +9,7 @@ import queue,threading
 import sys
 from typing import Any, Tuple
 import loggerTemplate
-
+import FileUtil as fu
 
 loger=loggerTemplate.log
 
@@ -127,6 +127,12 @@ def loadTorr(torrpath):
     except IndexError:
         loger.info("error " + torrpath)
     return None
+# def rename(path):
+#     for dirpath, dirnames, filenames in os.walk(path):
+#         for filename in filenames:
+#
+#
+
 
 def getTorrentByDetails(str,filepath):
     dirs = []
@@ -221,12 +227,14 @@ def filterBigfiles(torrpath,filterLen):
 # torrpath 种子路径
 # filepath 下载文件路径
 # subDirName转移的子文件夹名称，有y ,half
+#1.scan torr path,get dict  key 种子名称   val 种子路径
+#2. find same move
 def filterDownFiles(torrpath,filepath,subDirName):
     # for dirpath, dirnames, filenames in os.walk(filepath):
     #     for dirname in dirnames:
     #         loger.info('dir:   ' +dirname)
     dirList=[]
-    #搜集已下载文件列表
+    #搜集已下载文件列表 TODO 增加单文件支持
     for filename in os.listdir(filepath):
         if os.path.isdir(os.path.join(filepath, filename)):
             dirList.append(filename)
@@ -235,9 +243,9 @@ def filterDownFiles(torrpath,filepath,subDirName):
         #     portion = os.path.splitext(filename)
         #     loger.info('00000  ' + portion[0])
         #     dirList.append(portion[0])
-
+    files =os.listdir(filepath)
     # clearMacConfigFile(dirList)
-
+    # 根据种子路径生成词典  key 种子名称   val 种子路径
     torrDict=geneTorrentDic(torrpath)
     torrlist=torrDict.keys()
 
@@ -249,10 +257,10 @@ def filterDownFiles(torrpath,filepath,subDirName):
     loger.info("  =====================  ")
     loger.info(rslist)
 
-    torrDonePath = torrpath+subDirName
+    torrDonePath = torrpath+os.path.sep+subDirName
     mkdirs(torrDonePath)
 
-    finishFilePath = filepath+subDirName
+    finishFilePath = filepath+os.path.sep+subDirName
     mkdirs(finishFilePath)
 
     for samefile in rslist:
@@ -289,6 +297,7 @@ def countFile(torrpath,filepath):
 
 
 #根据种子路径生成词典  key 种子名称   val 种子路径
+#原则上不会有重复，毕竟文件名不可能重复
 def geneTorrentDic(torrpath):
     torrlist = []
     torrNamelist = []
@@ -376,7 +385,10 @@ dbqueue = queue.Queue()
 def getTorListByDir(torrdir):
     datalist = []
     sum = 0
+    broken_num=0
+    #get_oswalk_desc 获取文件倒序
     for dirpath, dirnames, filenames in os.walk(torrdir):
+    # for dirpath, dirnames, filenames in fu.get_oswalk_desc(torrdir):
         i=0
 
         for filename in filenames:
@@ -392,31 +404,40 @@ def getTorListByDir(torrdir):
                     my_torrent = Torrent.from_file(torr)
                 except BencodeDecodingError:
                     #种子下载失败了
-                    loger.info('error file '+torr)
+                    loger.error('error file '+torr)
                     errorpath=dirpath+'/errfiles'
                     mkdirs(errorpath)
                     shutil.move(torr,errorpath+'/'+filename)
+                    broken_num+=1
                     continue
                 except IndexError:
-                    loger.info('error file ' + torr)
+                    loger.error('error file ' + torr)
                     continue
 
                 hash = my_torrent.info_hash
                 path = os.path.dirname(torr)
                 tobj = [hash, path, filename]
+                # loger.info('put queue scan file ' + torr)
+                # loger.info('put queue scan hash ' + hash)
                 datalist.append(tobj)
                 if i == batchsize:
                     i = 0
                     dbqueue.put(datalist)
-                    loger.info("put 2 queue" + str(datalist))
-                    datalist = []
+                    loger.info("put 2 data" + str(datalist))
+                    loger.info("put 2 queue" + str(len(datalist)))
+                    loger.info("put 2 queue sum" + str(sum))
+                    datalist =[]
                 i += 1
         if (datalist is not None and len(datalist) > 0):
             dbqueue.put(datalist)
-            loger.info("put 2 queue")
+            loger.info("put 2 data" + str(datalist))
+            loger.info("put 2 queue" + str(len(datalist)))
+            loger.info("put 2 queue sum" + str(sum))
+            datalist=[]
+            # loger.info("put 2 queue")
             # loger.info("put 2 queue" + str(datalist))
     loger.info("sum:"+str(sum))
-
+    loger.info("broken_num:"+str(broken_num))
 
 #入库查重批次个数
 batchsize=100
@@ -424,7 +445,9 @@ batchsize=100
 # 列表每条记录包括 hcode ,path, filename
 def consumMsg():
     count=0
+
     while True:
+        datalist = []
         # if count==20:
         #     break
         if dbqueue.empty():
@@ -433,8 +456,9 @@ def consumMsg():
         else:
             datalist=dbqueue.get()
             count+=len(datalist)
+            loger.info("consum msg len=>:"+str(count))
             #1.批量插入数据
-            tag = dbtool.recoderbatch(datalist)
+            tag = dbtool.recoderbatch(datalist,1)
             if(not tag):#插入失败
                 # clearTorr()
 
@@ -444,22 +468,22 @@ def consumMsg():
                 #1.1同一批次中，有重复的hcode，做一次过滤
                 loger.info('-------------clearDupTorrHandler-----------')
                 datalist,hashs=clearDupTorrHandler(datalist,hashs)
+                # 生成map对象，key 为hash val 为#[hash, path, filename]
                 dataDict = build_torrObj_dic(datalist)
                 #1.查询主数据表，hcode相同既相同
                 # result dataset  [id ,hcode,path,filename,time]
                 dbrs=dbtool.queryByHashCode(hashs)
                 #2.查询重复数据表，hcode path filename 都相同才
                 loger.info('-------------filterDirtyData----------')
-                datalist2=filterDirtyData(dataDict ,dbrs)
-                if datalist2 is not None and len(datalist2) >0:
-                    dbtool.recoderbatch(datalist2)
+                datalist=filterDirtyData(dataDict ,dbrs)
+                if datalist is not None and len(datalist) >0:
+                    dbtool.recoderbatch(datalist,2)
                     dataDict.clear()
-                    datalist2.clear()
                     datalist.clear()
             else:
+                datalist.clear()
                 loger.info('数据批量插入成功!!!')
-
-        loger.info("count:"+str(count))
+                loger.info("count:"+str(count))
 
 #生成map对象，key 为hash val 为#[hash, path, filename]
 def build_torrObj_dic(datalist):
@@ -492,8 +516,9 @@ def clearDupTorrHandler(datalist,hashs):
             else:
                 st.add(o[0])
         #进行重复数据处理
-        for dup in duplist:
+        for dup in duplist:#todo 没有列出对比的重复文件
             msg="重复文件:" +dup[0]+ dup[1]+os.path.sep + dup[2]
+            loger.info("队列本身存在重复文件"+msg)
             addDupData(dup[0], dup[1], dup[2], msg)
         return rslist,list(st)
     else:
@@ -517,9 +542,10 @@ def filterDirtyData(datadict ,dblist):
                 obj=datadict.get(hcode)
                 try:
                     rslist=[tor for tor in rslist if not (
-                        tor[0]==dbrs[1] and
-                        tor[1] == dbrs[2] and
-                        tor[2] == dbrs[3]
+                        tor[0]==dbrs[1]
+                        # and
+                        # tor[1] == dbrs[2] and
+                        # tor[2] == dbrs[3]
                     )]
                     # rslist.pop(obj)
 
@@ -561,19 +587,23 @@ def writeDupLog(torrpath,msg):
 def comparefile(torrhcode,torrpath,torrfilename,
                 dbhcode,dbpath,dbfilename):
     loger.info('---------------------------------')
-    loger.info('comparefile  scanfile==>'+torrhcode+torrpath+torrfilename)
-    loger.info('comparefile  dbdbfile==>' + dbhcode + dbpath + dbfilename)
+    loger.info('comparefile  scanfile==> '+torrhcode+'   '+torrpath+torrfilename)
+    loger.info('comparefile  dbdbfile==> ' + dbhcode + '   '+dbpath + dbfilename)
 
     loger.info('---------------------------------')
     if(torrhcode==dbhcode):
         fpath=torrpath+os.path.sep+torrfilename
         dpath=dbpath+os.path.sep+dbfilename
-        if fpath==dpath:#同一个文件
+        if fpath==dpath:#同一个文件 TODO
+            loger.info('comparefile scan same file skip it!')
             #todo nothing
             return
         else:
             #1.写日志
             msg="扫描文件:" +fpath+Enter+"数据库文件:"+dpath+Enter
+            loger.info('comparefile scan diff  file Res')
+            loger.info(msg)
+
             addDupData(torrhcode,torrpath,torrfilename,msg)
             #todo move the file
             # writeDupLog(torrpath, msg)
@@ -603,6 +633,7 @@ def comparefile(torrhcode,torrpath,torrfilename,
 #写日志，插入torrentdup表中，将重复种子移动到duplicate文件夹种
 #torrent表or Torrentdup存在,则不做处理
 def addDupData(torrhcode,torrpath,torrfilename,msg):
+    loger.debug('addDupData ' + torrhcode + '  ' + torrpath + '  ' + torrfilename)
     torr_filepath= torrpath + os.path.sep + torrfilename
     # msg = "重复文件:" +torrhcode+ torrpath+os.path.sep + torrfilename
     # 1.写日志
@@ -613,12 +644,14 @@ def addDupData(torrhcode,torrpath,torrfilename,msg):
     if os.path.isfile(torr_filepath) and not torrpath.endswith(DUP):#文件夹已经是重复文件夹名称了，不做处理
         newtorrpath = torrpath + DUP_DIRNAME
         mkdirs(newtorrpath)
-        loger.info('move' + torr_filepath + '  to ' + Enter + newtorrpath + torrfilename)
+        loger.info('move  ' + torr_filepath  + Enter + 'to  '+ newtorrpath + torrfilename)
         shutil.move(torr_filepath, newtorrpath + torrfilename)
 
     rs = dbtool.querydupTorrByHcodeAndFnAndPath(torrhcode, torrfilename, torrpath)
 
     if rs is not None and len(rs) > 0:
+        #存在需要对比路径，如果路径不同，需要edit ，因为之前move了
+        loger.debug('重复记录已存在，不做处理' + torrhcode + '  ' + newtorrpath + '  ' + torrfilename)
         # 重复路径存在
         return
     else:  # 重复记录表不存在该记录，直接插入
@@ -990,7 +1023,7 @@ if __name__ == '__main__':
     #test()
     #clearXunleiFile("D:\\temp\\")
    # loger.info('C5AEA8F99A520790D421FEB7162DDF7A77BD297B'.lower())
-    #strlist=['全景後拍28個氣質少婦','059','195']
+    #strlist=['爱剪辑-48.avi']
     #findTorrListByStr(strlist,'D:\\temp\\0555\\2022-03-01\\0555\\')
     # findTorrListByStr(strlist, 'D:\\temp\\0555\\2022-03-01\\0555\\b20\errfiles\\')
 
@@ -1001,11 +1034,15 @@ if __name__ == '__main__':
     #scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\normal\\")
     #countHalfFiles('D:\\temp\\chachong\\193-性感美女顶级调教 狂操捆绑 强制高潮 爆菊 滴蜡 K9训犬 群P毒龙 乱交露出\\')
     # genhalfTorrent('D:\\temp\\chachong\\')
+    #filterDownFiles(r'D:\temp\b31', r'D:\temp\sp', 'y')
+    # writeTorrDetail('D:\\360Downloads\\1228\\')
+    #os._exit(0)
+
     #
-    # path = r'D:\temp\0555\2022-03-01'
-    path=r'D:\temp\0555\2022-03-01\0555'
-    removeFiles(path)
-    truncatetable()
+    path = r'D:\temp\0555\2022-03-01\0555\b35'
+    # path=r'D:\temp\b31y'
+    # removeFiles(path)
+    #truncatetable()
     scanTorrentsIntoDB(path)
 
     #removeFiles('f:\\')
@@ -1026,8 +1063,6 @@ if __name__ == '__main__':
     #getTorrDetail('D:\\360Downloads\\1228\\')
     # writeTorrDetail('D:\\temp\\1228\\')
     #filterBigfiles('D:\\360Downloads\\test\\', 1000)
-    # filterDownFiles('D:\\360Downloads\\1228\\8\\','D:\\temp\\1228\\','y\\')
-    # writeTorrDetail('D:\\360Downloads\\1228\\')
 
     # getTorrDetail('D:\\temp\\593254315050521\\1210-best\\1\\')
 

@@ -9,12 +9,12 @@ bigsize = 300 * 1024 * 1024
 big_file_read_size=100 * 1024 * 1024
 msize=1 * 1024 * 1024
 siteStr=['gc2048.com-','gc2048.com','rh2048.com','hhd800.com@',
-         'hhd800.com','aavv38.xyz@','aavv38.xyz','@']
+         'hhd800.com','aavv38.xyz@','aavv38.xyz','kcf9.com-','@']
 entertag='\r\n'
 msize = 1 * 1024 * 1024
 osseparator = os.path.sep
 def clearDirName(clearPath):
-    txt = log(clearPath, 'duplicate dirs', True)
+    txt = log(clearPath, 'clearDirName', True)
     for dirpath, dirnames, filenames in os.walk(clearPath):
         for dirname in dirnames:
             for str in siteStr:
@@ -40,14 +40,26 @@ def clearDirName(clearPath):
                             os.renames(fullpath,tarpath)
     txt.close()
 
+#倒序排列文件列表
+def get_oswalk_desc(path):
+    # 创建一个空列表来存储遍历的结果
+    walk_results = []
+
+    # 遍历目录树，并将结果添加到列表中
+    for dirpath, dirnames, filenames in os.walk(path):
+        walk_results.append((dirpath, dirnames, filenames))
+    # 对列表进行排序，这里假设我们想要根据目录路径进行排序
+    walk_results.sort(key=lambda x: x[0], reverse=True)
+    # 现在 walk_results 是按照目录路径倒序排列的
+    return  walk_results
 def clearFileName(clearPath):
-    txt = log(clearPath, 'duplicate filenames', True)
+    txt = log(clearPath, 'clearFileName', True)
     for dirpath, dirnames, filenames in os.walk(clearPath):
         for f in filenames:
             for str in siteStr:
                 if(f.startswith(str)):
                     newfilename=f.replace(str,'')
-                    if len(newfilename)==0:#如果文件夹只是违禁网站，跳过
+                    if len(newfilename)==0:#如果文件夹只是违禁网站，或者替换后较短
                         continue
                     if(newfilename in filenames):#存在重复文件
 
