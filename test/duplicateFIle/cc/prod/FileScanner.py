@@ -193,8 +193,8 @@ class FileChecking():
                     i = 0
                     self.__batchAndClear(fileObjList, fileCodeSet)
                     fileObjList.clear()
-                    obj = self.__buildFileDetailModelByPath(f,driver, platformscan,virtualPath )
-                    self.__print_type_and_value(obj)
+                obj = self.__buildFileDetailModelByPath(f,driver, platformscan,virtualPath )
+                # self.__print_type_and_value(obj)
                 fileObjList.append(obj)
                 fileCodeSet.add(obj.hcode)
                 # file.systemdriver + file.path + file.filename
@@ -360,10 +360,10 @@ class FileChecking():
         # self.searchHeavyPaths.add("D:\\360Download\\仓鼠管家\\")
         #self.searchHeavyPaths.add("K:\\spj\\spj\\")
         #self.searchHeavyPaths.add("J:\\\\榨汁夏\\")
-        self.searchHeavyPaths.add("D:\\")
-        # self.searchHeavyPaths.add("F:\\")
-        # self.searchHeavyPaths.add("G:\\")
-        # self.searchHeavyPaths.add("H:\\")
+        self.searchHeavyPaths.add("i:\\")
+        self.searchHeavyPaths.add("F:\\")
+        self.searchHeavyPaths.add("G:\\")
+        self.searchHeavyPaths.add("H:\\")
         ##########linux  /home/cc/code/python/test/util/cc/duplicateFIle
 
         # self.searchHeavyPaths.add("/media/cc/MOIVESOFT/")

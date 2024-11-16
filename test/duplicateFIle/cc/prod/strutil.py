@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 """显示目录树状图"""
 import time
-from test.util.cc.duplicateFIle.cc.utils import logger
+import logger
 
 
 # import  logger

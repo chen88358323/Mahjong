@@ -190,12 +190,12 @@ class FileChecking():
         else:
             i = 0
             for f in filelist:
+
                 if i == batchsize:  # 满足条件批量插入
                     i = 0
                     self.__batchAndClear(fileObjList, fileCodeSet)
                     fileObjList.clear()
-                    obj = self.__buildFileDetailModelByPath(f,driver, platformscan,virtualPath )
-                    self.__print_type_and_value(obj)
+                obj = self.__buildFileDetailModelByPath(f,driver, platformscan,virtualPath )
                 fileObjList.append(obj)
                 fileCodeSet.add(obj.hcode)
                 # file.systemdriver + file.path + file.filename
