@@ -14,7 +14,7 @@ def getDbTime(f):
         res = f(*arg, **kwarg)
         e_time = time.time()
         costtime=e_time - s_time
-        logger.log.info('数据库方法{}耗时：{}秒'.format(f.__name__,costtime))
+        logger.log.info('数据库方法{}耗时：{}秒'.format(f.__name__, costtime))
         return res
 
     return inner

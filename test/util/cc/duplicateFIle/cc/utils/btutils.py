@@ -64,7 +64,7 @@ from time import sleep
 #根据magnet路径下载文件
 def downTfileByMagnet(magnetLink,torrpath):
     torrent_file = TorrentDownloader(magnetLink, torrpath)
-    await torrent_file.start_download()
+    torrent_file.start_download()
 
     # response=requests.get(magnetLink)
     # with open(torrpath,'wb') as file:

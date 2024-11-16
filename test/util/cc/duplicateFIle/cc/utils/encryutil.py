@@ -10,7 +10,7 @@ big_file_read_size=25 * 1024 * 1024
 
 
 quick_bigsize = 100 * 1024 * 1024
-quick_big_file_read_size=25 * 1024 * 1024
+quick_big_file_read_size=20 * 1024 * 1024
 msize=1 * 1024 * 1024
 def mdavMD5( path):
     md5file = open(path, 'rb')

@@ -22,6 +22,7 @@ videoType = ['.avi', '.mp4', '.ts', '.flv','.mkv','.mov', '.rmvb', '.rm', '.mpeg
 batchsize=500
 
 class FileChecking():
+    local_cache=LocalCache.local_cache()
     def __init__(self):
         logger.log.info("正在进行初始化设置......")
         #默认的配置信息
@@ -89,7 +90,10 @@ class FileChecking():
         # else:
         #     return  False
     # def filterUselessFile(filename):
-
+    def __print_type_and_value(param):
+        param_type = type(param)
+        param_value = param
+        print(f"Type: {param_type}, Value: {param_value}")
 
     #path  获取需要对比的文件完整路径
     #
@@ -97,7 +101,7 @@ class FileChecking():
         fileObjList = []
         fileCodeSet = set()
 
-        originalcache=LocalCache.load_snapshot(path)
+        originalcache=self.local_cache.load_snapshot(path)
         # dirver为盘符路径  C:\Users\wuyanzu\  获取盘符为c:
         # platformscan  Windows  or  LinuxYES
         driver, platformscan = dirutil.getDriverAndPlatForm(path)
@@ -128,7 +132,7 @@ class FileChecking():
                     self.__batchAndClear(fileObjList, fileCodeSet)
                     fileObjList.clear()
             #存储全部缓存
-            LocalCache.save_snapshot(path, addcache)
+            self.local_cache.save_snapshot(path, addcache)
         else:
             originalFileList=originalcache.keys()
 
@@ -147,19 +151,19 @@ class FileChecking():
 
             delfiles=[file for file in originalFileList if file not in newCacheFileList]
 
-            logger.log.info('增量扫描文件 新增文件数' + str(len(addfiles))+' 删除文件数'+str(len(delfiles)))
+            logger.log.info('增量扫描文件 新增文件数' + str(len(addfiles)) + ' 删除文件数' + str(len(delfiles)))
             #1.扫描新增filelist 生成缓存 #TODO ADD ES
             newCacheDict=self.__batchAddFileDetailModelByFileList(addfiles,driver, platformscan ,virtualPath)
 
             self.__syncDelFile(originalcache,delfiles,driver)
             #两个缓存相加
             newCache=ChainMap(newCacheDict,originalcache)
-            LocalCache.save_snapshot(path, newCache)
+            self.local_cache.save_snapshot(path, newCache)
 
     #将删除信息增加值LOCALCACHE  DB  TODO ES
     def __syncDelFile(self,originalcache,delfiles,driver):
         # 2.1 根据keylist更新删除的数据  CACHE #
-        originalcache ,delcache  = LocalCache.clearCacheByKeyList(originalcache, delfiles)
+        originalcache ,delcache  = self.local_cache.clearCacheByKeyList(originalcache, delfiles)
         # 2.2 根据keylist更新删除的数据  DB #TODO ADD ES
         hashs = []
         pathes = []
@@ -172,6 +176,8 @@ class FileChecking():
                 filenames.append(fn)
             FileDetailService.delBatchByHC_PATH_FN(hashs,pathes,filenames)
         #3. TODO ADD ES
+
+
 
     #根据文件列表，批量更新数据库
     def __batchAddFileDetailModelByFileList(self,filelist,driver, platformscan ,virtualPath):
@@ -189,6 +195,7 @@ class FileChecking():
                     self.__batchAndClear(fileObjList, fileCodeSet)
                     fileObjList.clear()
                     obj = self.__buildFileDetailModelByPath(f,driver, platformscan,virtualPath )
+                    self.__print_type_and_value(obj)
                 fileObjList.append(obj)
                 fileCodeSet.add(obj.hcode)
                 # file.systemdriver + file.path + file.filename
@@ -314,13 +321,13 @@ class FileChecking():
         # self.__exchange()#清理数据，将
         # os._exit(0)
 
-        # print("慎用慎用，只在测试环境输入YES,拒绝请按其他键")
-        # ans = input()
-        # if ans == "YES":
-        #     #清理数据 DB CACHE
-        #     self.__cleardata4Test()
-        # else:
-        #     print("未清理表数据")
+        print("慎用慎用，只在测试环境输入YES,拒绝请按其他键")
+        ans = input()
+        if ans == "YES":
+            #清理数据 DB CACHE
+            self.__cleardata4Test()
+        else:
+            print("未清理表数据")
 
 
 
@@ -355,7 +362,9 @@ class FileChecking():
         #self.searchHeavyPaths.add("K:\\spj\\spj\\")
         #self.searchHeavyPaths.add("J:\\\\榨汁夏\\")
         self.searchHeavyPaths.add("D:\\")
-
+        # self.searchHeavyPaths.add("F:\\")
+        # self.searchHeavyPaths.add("G:\\")
+        # self.searchHeavyPaths.add("H:\\")
         ##########linux  /home/cc/code/python/test/util/cc/duplicateFIle
 
         # self.searchHeavyPaths.add("/media/cc/MOIVESOFT/")

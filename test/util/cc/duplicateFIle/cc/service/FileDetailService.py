@@ -43,7 +43,7 @@ def addFileDetailDupBatch(list):#todo 唯一性失败，优化细分
             fduplist.append(filedup)
     logger.log.info("插入fildetaildup表数据，总数:" + str(len(list))
                     + "实际数据条数:" + str(len(fduplist))
-                   )# + "重复数据条数:" + str(len(rs))
+                    )# + "重复数据条数:" + str(len(rs))
     if fduplist is not None and len(fduplist)>0:
         FileDetailModelDupDao.addDBatch(fduplist)
 
