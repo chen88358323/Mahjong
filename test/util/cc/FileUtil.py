@@ -8,8 +8,8 @@ from moviepy.video.io.VideoFileClip import VideoFileClip
 bigsize = 300 * 1024 * 1024
 big_file_read_size=100 * 1024 * 1024
 msize=1 * 1024 * 1024
-siteStr=['gc2048.com-','gc2048.com','rh2048.com','hhd800.com@',
-         'hhd800.com','aavv38.xyz@','aavv38.xyz','kcf9.com-','@']
+siteStr=['gc2048.com-','gc2048.com','rh2048.com','hhd800.com@','kfa33.com@',
+         'hhd800.com','aavv38.xyz@','aavv38.xyz','kcf9.com-','@','guochan2048.com -']
 entertag='\r\n'
 msize = 1 * 1024 * 1024
 osseparator = os.path.sep

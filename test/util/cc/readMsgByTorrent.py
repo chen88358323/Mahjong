@@ -1,15 +1,12 @@
 from torrentool.api import Torrent
-from torrentool.api import TorrentFile
+# from torrentool.api import TorrentFile
 from torrentool.exceptions import BencodeDecodingError
 import os
 import  shutil
 import mysqlTemplate as dbtool
 import time,copy
 import queue,threading
-import sys
-from typing import Any, Tuple
 import loggerTemplate
-import FileUtil as fu
 
 loger=loggerTemplate.log
 
@@ -257,10 +254,10 @@ def filterDownFiles(torrpath,filepath,subDirName):
     loger.info("  =====================  ")
     loger.info(rslist)
 
-    torrDonePath = torrpath+os.path.sep+subDirName
+    torrDonePath = torrpath+os.path.sep+subDirName+ os.path.sep
     mkdirs(torrDonePath)
 
-    finishFilePath = filepath+os.path.sep+subDirName
+    finishFilePath = filepath+os.path.sep+subDirName+ os.path.sep
     mkdirs(finishFilePath)
 
     for samefile in rslist:
@@ -276,7 +273,7 @@ def filterDownFiles(torrpath,filepath,subDirName):
         else: #移动种子
             shutil.move(torrDict[samefile],newTorrFile)
         #移动完成文件
-        shutil.move(filepath+samefile,finishFile)
+        shutil.move(filepath+ os.path.sep+samefile,finishFile)
         loger.info('finishFile:' + finishFile)
 
     loger.info('移动种子文件：'+str(len(rslist)))
@@ -337,13 +334,14 @@ def mkdirs(path):
         os.mkdir(path)
 
 def getTorrDetail(filepath):
+    filepath=filepath+os.path.sep
     dirname = os.path.dirname(filepath)
     #文件夹最后一层名称
     basename = os.path.split(dirname)[-1]
     txtpath=filepath+basename+'.txt'
-    # loger.info( 'basename==>'+basename)
-    # loger.info('dirname==>'+dirname)
-    # loger.info('txtfile===>'+txtpath)
+    loger.info( 'basename==>'+basename)
+    loger.info('dirname==>'+dirname)
+    loger.info('txtfile===>'+txtpath)
 
     txtfile=open(txtpath,'w+',encoding='utf-8')
 
@@ -367,6 +365,7 @@ def getTorrDetail(filepath):
                 my_torrent = Torrent.from_file(torr)
                 tlen=my_torrent.total_size / len
                 txtfile.writelines(str(tlen)+'\r')
+                txtfile.writelines(str(my_torrent.files) + '\r\n')
                 txtfile.writelines(my_torrent.info_hash+'\r')
 
                 # loger.info(my_torrent.total_size / len)
@@ -698,16 +697,30 @@ def addDupData(torrhcode,torrpath,torrfilename,msg):
 #
 #             return  False
 
-
+#path 待扫描生成唯一hashcode的种子路径
+def scan_torr_get_hashlist(path,txt):
+    tarlist = []
+    for dirpath, dirnames, filenames in os.walk(path):
+        for filename in filenames:
+            portion = os.path.splitext(filename)
+            if portion[1] == ".torrent":
+                torr = os.path.join(dirpath, filename)
+                # txt.writelines("dirpath  "+dirpath+'\r\n')
+                # txt.writelines("filename  " + filename + '\r\n')
+                my_torrent = Torrent.from_file(torr)
+                hashcode=my_torrent.info_hash.lower()
+                if txt is not None:
+                    txt.writelines("hashcode  " + hashcode + '\r\n')
+                tarlist.append(hashcode)
 
 def findTorrentByHashcode(srctorrpath,tartorrpath):
     txt = log(tartorrpath, 'findTorrentByHashcode',False)
-    tarlist=[]
     #遍历待查找的种子，生成集合
-    for i in len(tarlist):
-        tarlist[i]=tarlist[i].lower()
+    tarlist=scan_torr_get_hashlist(tartorrpath,txt)
     txt.writelines("************************待查找************  " + '\r\n')
+    srclist=scan_torr_get_hashlist(srctorrpath,None)
 
+    dupdata = [dup for dup in tarlist if dup in srclist]
     for dirpath, dirnames, filenames in os.walk(srctorrpath):
         for filename in filenames:
             portion = os.path.splitext(filename)
@@ -942,7 +955,13 @@ def comparefiles(tfile, downdir, deltag):
         tfilename = file.name.replace('\\\\', os.path.sep)
         # loger.info('tfilename'+tfilename)
         #截取359目录，由于可能会改名，所以
-        subpath = tfilename.split(os.path.sep, 1)[1]
+        file_array=tfilename.split(os.path.sep, 1)
+        if(len(file_array)==1):
+            print('len1  tfilename==>'+tfilename)
+            continue
+        else:
+            subpath = file_array[1]
+
         if subpath.__contains__(os.path.sep):
             subname = subpath.split(os.path.sep, 1)[1]
         else:
@@ -1038,8 +1057,11 @@ if __name__ == '__main__':
     # writeTorrDetail('D:\\360Downloads\\1228\\')
     #os._exit(0)
 
+
+    #getTorrDetail(r'D:\temp\0555\2022-03-01\0555\b38')
+    #os._exit(0)
     #
-    path = r'D:\temp\0555\2022-03-01\0555\b35'
+    path = r'D:\temp\0555\2022-03-01\0555\b43'
     # path=r'D:\temp\b31y'
     # removeFiles(path)
     #truncatetable()
@@ -1054,12 +1076,12 @@ if __name__ == '__main__':
 
     #scanTorrentsIntoDB("C:\\Users\\Administrator\\Downloads\\best\\")
 
-    #scanTorrentsIntoDB("D:\\temp\\0555\\t\\0555\\b33-b\\")
+    #scanTorrentsIntoDB("D:\\temp\\0555\\t\\0555\\b37\\")
     # tormd5("C:\\Users\\Administrator\\Downloads\\best\\推特网红大屁股骚货kbamspbam，怀孕了还能挺着个大肚子拍照拍视频挣钱，太敬业了，奶头变黑 但白虎粉穴依然粉嫩.torrent")
-    #os._exit(0)
+    #
     # getDulicateFiles()
-    #getTorrDetail('i:\\done\\')
-    # getTorrDetail('D:\\temp\\best2\\best4\\')
+
+
     #getTorrDetail('D:\\360Downloads\\1228\\')
     # writeTorrDetail('D:\\temp\\1228\\')
     #filterBigfiles('D:\\360Downloads\\test\\', 1000)
