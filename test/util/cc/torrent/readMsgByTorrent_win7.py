@@ -4,66 +4,93 @@ import threading
 import shutil
 from torrentool.exceptions import BencodeDecodingError
 import os
+import loggerTemplate
+loger = loggerTemplate.log
+from torrent_download_files_check import  DownLoadCheck
+
+
+array = ['【01axg.xyz】.jpg', '02AXG.XYZ.png', '03axg.XYZ.png', '8axg.xyz.png',
+         '04axg.xyz.png', '05axg.xyz.png', '06axg.xyz.png',
+         '( 1024网址PC端发布器 3.0 ).chm',
+         '( 1024网址PC端发布器 20.chm',
+         '( 1024社区手机网址发布器 3.1 ).apk',
+         '( 1024社区手机网址发布器 3.0 ).apk',
+         '( 1024社区手机网址发布器 2.0).apk',
+         '( 扫码下载1024安卓APP_3.0 ).png',
+         '( 扫码下载1024安卓APP_2.0 ).png',
+         '(_1【av8.la】。原版无水印-网络热搜门事件，每日更新！.mhtml',
+         'gc2048.com-最新国产日韩欧美新片合集发布.htm',
+         'gc2048.com-(_2048免翻墙地址发布.htm',
+         'gc2048.com-2022年国产汇总2048论坛.htm',
+         'sis百万国产原创作品.png',
+         '(_1024手机发布器.apk',
+         '(_1024手机版网址.png',
+         '(_1024社区免翻墙网址.chm',
+         '(_扫码下载1024手机网址发布器.png',
+         '暗香阁地址发布器.CHM',
+         '暗香阁最新地址.png',
+         '暗香阁综合论坛.png',
+         '【01axg.xyz】_副本.jpg',
+         '获取最新地址邮箱，无需翻墙.txt',
+         '免费资源实时更新.png',
+         '(_1【av8.la】。原版无水印-网络热搜门事件，每日更新！.html',
+         '抖淫短视频边看边赚钱的APP.url',
+         '黑料社，第一手吃瓜APP.url',
+         '解压错误请下载。原版无水印资源.txt', '.DS_Store',
+         '小黄片.mht',
+         '_性视界.chm',
+         '_性视界.html',
+         '_性视界.jpg',
+         '_性视界.mht',
+         '小黄片.chm',
+         '小黄片.html',
+         '小黄片.jpg',
+         '小黄片.mht',
+         '_尖叫视频.html',
+         '_尖叫视频.jpg',
+         '尖叫视频.chm',
+         '尖叫视频.mht',
+         '_萌萝社.chm',
+         '_萌萝社.html',
+         '_萌萝社.jpg',
+         '_萌萝社.mht',
+         '(  1024社区最新地址_3.0 ).htm',
+         '(  最新bt合集_3.0 ).html',
+         '( 1024网址PC端发布器 3.0 ).chm',
+         '( 扫码下载1024安卓APP_3.0 ).png',
+         '( 1024社区手机网址发布器 3.1 ).apk',
+         '( 1024网址PC端发布器 3.1 ).chm',
+         '( 扫码下载1024安卓APP_3.1 ).png',
+         '1024草榴社区t66y.com.jpg',
+         '18p2p by.txt',
+         '2048社区 每天更新 同步日韩.html',
+         'SEX169 论坛.url',
+         'SEX8.cc杏吧_性吧_sex8_杏吧有你春暖花开-.txt',
+         'WK綜合論壇 - WaiKeung.net.url',
+         'av狼永久地址.url',
+         'id16151274@SexInSex.net.txt',
+         '公仔箱論壇.url',
+         '桃花族论坛.url',
+         '比思永久地址.url',
+         '草榴最新地址.mht',
+         'duplicatedirtyData.txt'
+         ]
 
 
 def removeFiles(filepath):
     # filepath = 'D:\\temp\\593254315050521\\demo\\'
-    array = ['【01axg.xyz】.jpg', '02AXG.XYZ.png', '03axg.XYZ.png', '8axg.xyz.png',
-             '04axg.xyz.png', '05axg.xyz.png', '06axg.xyz.png',
-             '( 1024网址PC端发布器 3.0 ).chm',
-             '( 1024网址PC端发布器 20.chm',
-             '( 1024社区手机网址发布器 3.1 ).apk',
-             '( 1024社区手机网址发布器 3.0 ).apk',
-             '( 1024社区手机网址发布器 2.0).apk',
-             '( 扫码下载1024安卓APP_3.0 ).png',
-             '( 扫码下载1024安卓APP_2.0 ).png',
-             '(_1024手机发布器.apk',
-             '(_1024手机版网址.png',
-             '(_1024社区免翻墙网址.chm',
-             '(_扫码下载1024手机网址发布器.png',
-             '暗香阁地址发布器.CHM',
-             '暗香阁最新地址.png',
-             '暗香阁综合论坛.png',
-             '【01axg.xyz】_副本.jpg',
-             '获取最新地址邮箱，无需翻墙.txt',
-             '免费资源实时更新.png',
-             '(_1【av8.la】。原版无水印-网络热搜门事件，每日更新！.html',
-             '抖淫短视频边看边赚钱的APP.url',
-             '黑料社，第一手吃瓜APP.url',
-             '解压错误请下载。原版无水印资源.txt',
-             '暗香阁地址发布页.html',
-             '暗香阁，暗香阁综合论坛，宅男资源搬运工 .html',
-             '1t.jpg',
-             '乐鱼体育-500223.com .mp4',
-             '18s18 (44).jpg','下载教程.HTML',
-             '关注Telegram电报频道不迷路.txt',
-             '动漫游戏.HTML',
-             '套图写真.HTML',
-             '小说语音.HTML',
-             '日韩欧美.HTML',
-             '更多资源.rar',
-             '最新自拍.HTML',
-             '资源更新发布页地址（重要！！！！！请牢记）_副本.txt',
-             '防和谐地址发布页_副本.url',
-             '1t.jpg',
-             '(  最新bt合集_3.0 ).html',
-             '(  1024社区最新地址_3.0 ).htm',
-             'gc2048.com-最新找回家包zz--保存收录很方便.txt',
-             'sbw99.cc---paco---CC.jpg'
 
-
-             ]
     # prefix='(1).jpg'
     for dirpath, dirnames, filenames in os.walk(filepath):
         for filename in filenames:
             if filename in array:
                 absPath = dirpath + "\\" + filename
-                print(absPath)
+                loger.info(absPath)
                 os.remove(absPath)
             # torr = os.path.join(dirpath, filename)
             # absPath = dirpath + filename
             # if(absPath.endswith(prefix)):
-            #     print(absPath)
+            #     loger.info(absPath)
 
 
 def getDulicateFiles():
@@ -89,15 +116,16 @@ def getTorrentByDetails(str, filepath):
             print('path*****' + i + '   ' + path)
             getTorrentByDetails(str, path)
         elif os.path.isfile(path) and path.find(".torrent"):
-            my_torrent = Torrent.from_file(path)
-            for torrfile in my_torrent.files:
-                # print('name:'+torrfile.name)
-                if (str in torrfile.name):
-                    dirs.append(path)
-                    # print(my_torrent.total_size / len)
-                    print('t:==>' + path)
-                    print(my_torrent.files)
-                    break
+            my_torrent =  loadTorr(path)
+            if my_torrent is not None:
+                for torrfile in my_torrent.files:
+                    # print('name:'+torrfile.name)
+                    if (str in torrfile.name):
+                        dirs.append(path)
+                        # print(my_torrent.total_size / len)
+                        print('t:==>' + path)
+                        print(my_torrent.files)
+                        break
 
 
 # finally:
@@ -147,7 +175,9 @@ def filterBigfiles(torrpath, filterLen):
             if portion[1] == ".torrent":
                 torr = os.path.join(dirpath, filename)
                 print('torr==' + torr)
-                my_torrent = Torrent.from_file(torr)
+                my_torrent = loadTorr(torr)
+                if my_torrent is None:
+                    continue
                 fileSize = my_torrent.total_size
                 print('size==' + str(fileSize))
                 if fileSize > lenG:
@@ -339,15 +369,45 @@ def filterDownFiles(torrpath, filepath, subDirName):
         finishFile = finishFilePath + samefile
         # 已经移动了，删除原有的
         if os.path.isfile(newTorrFile):
+            loger.error("****************有已经下载过得文件******************")
+            loger.error("****************种子文件**************************")
+            loger.error(newTorrFile)
+            loger.error("****************重复文件**************************")
+            loger.error(filepath + os.path.sep + samefile, finishFile)
             os.remove(torrDict[samefile])
         else:  # 移动种子
             shutil.move(torrDict[samefile], newTorrFile)
+            # 文件已经下载过了，重新命名复制
+        if os.path.exists(finishFile):
+            finishFile = finishFile + '_new'
+            # base, ext = os.path.splitext(finishFile)
+            # finishFile = f"{base}_new{ext}"  # 修改文件名以避免冲突
+            mkdirs(finishFile)
         # 移动完成文件
-        shutil.move(filepath + samefile, finishFile)
+        shutil.move(filepath + os.path.sep + samefile, finishFile)
+        loger.info('finishFile:' + finishFile)
+        # 判断pdf是否存在，存在， 转移至新路径
+        movePdf(torrDict[samefile], finishFile)
+        # 移动完成文件
         print('finishFile:' + finishFile)
 
     print('移动种子文件：' + str(len(rslist)))
-
+# 将种子路径转化为pdf路径
+def nameTorr2Pdf(torrfullpath):
+    if(torrfullpath  is None):
+        return
+    else:
+        path ,ext=os.path.splitext(torrfullpath)
+        pdfpath=path+'.pdf'
+        return pdfpath
+# 判断pdf是否存在，存在， 转移至新路径
+def movePdf(oldpdfpath, tarpath):
+    oldpdf = nameTorr2Pdf(oldpdfpath)
+    if os.path.isfile(oldpdf):
+        # 存在pdf 转移
+        pdf_name = os.path.basename(oldpdf)
+        shutil.move(oldpdf, tarpath + os.sep + pdf_name)
+# 将种子路径转化为pdf路径
     # 计算文件的大小，下载比例
 def countFile(torrpath, filepath):
     # 搜集下载中文件列表
@@ -378,16 +438,11 @@ def geneTorrentDic(torrpath,skipTag):
                 if portion[1] == ".torrent":
                     torr = os.path.join(dirpath, filename)
                     # print('torr=='+torr)
-                    try:
-                        my_torrent = Torrent.from_file(torr)
-                        torrlist.append(my_torrent.name)
-                        torrNamelist.append(torr)
-                    except BencodeDecodingError:
-                        print("error " + filename)
+                    my_torrent = loadTorr(torr)
+                    if my_torrent is None:
                         continue
-                    except IndexError:
-                        print("error " + filename)
-                        continue
+                    torrlist.append(my_torrent.name)
+                    torrNamelist.append(torr)
 
     #返回字典对象 ，key 种子文件路径  种子对应下载文件列表
     torrDict = dict(zip(torrlist, torrNamelist))
@@ -416,7 +471,7 @@ def cal_size(self, file_path):
 
 def mkdirs(path):
     if (not os.path.exists(path)):
-        print('mkdir:' + path)
+        loger.info('mkdir:' + path)
         os.mkdir(path)
 
 
@@ -435,16 +490,19 @@ def getTorrDetail(filepath):
             txtfile.writelines(torname)
             print("=================================")
             print(portion)
-            # 如果后缀是.xltd
-            if portion[1] == ".xltd":
-                print("need change")
-                newnamee = portion[0].replace('.bt', '')
-                os.renames(filepath + portion[0] + portion[1], filepath + newnamee)
+            # 如果后缀是.xltd  用于解决下载99%的问题，
+            # 但考虑到会有下载99%异常的问题，关闭此功能
+            # if portion[1] == ".xltd":
+            #     print("need change")
+            #     newnamee = portion[0].replace('.bt', '')
+            #     os.renames(filepath + portion[0] + portion[1], filepath + newnamee)
             if portion[1] == ".torrent":
                 print("================torrent conteng=================" + '\r\n')
                 print(torr)
                 txtfile.writelines(torr + '\r\n')
-                my_torrent = Torrent.from_file(torr)
+                my_torrent = loadTorr(torr)
+                if my_torrent is None:
+                    continue
                 txtfile.writelines(my_torrent.info_hash + '\r\n')
                 tlen = my_torrent.total_size / len
                 txtfile.writelines(str(tlen) +'mb'+ '\r\n')
@@ -452,9 +510,6 @@ def getTorrDetail(filepath):
                 # print(my_torrent.total_size / len)
                 # print(my_torrent.comment)
                 print(str(my_torrent.files)+ '\r\n')
-
-
-
                 print(portion[0] + '          ' + my_torrent.name)
                 for torrfile in my_torrent.files:
                     if (torrfile.length > hundredmb):
@@ -547,6 +602,8 @@ def countHalfFiles(downdir,deltag):
                 print("tfile:"+tfile)
                 print("root:"+root)
                 comparefiles(tfile,root,deltag)
+dlcheck = DownLoadCheck()
+blacklist = dlcheck.load_blacklist(r"merged_blacklist.json")
 
     #tfiles 种子里的文件，
     #downdir 下载目录，包含了种子文件的头目录
@@ -572,7 +629,8 @@ def comparefiles(tfile,downdir,deltag):
             subname=subpath
         #subpath \尖叫视频.mht
         #print('subpath'+str(subpath))
-
+        if subname in blacklist:
+            continue
         if subname not in filterfileArray:
             if not subname.__contains__('如果您看到此文件，请升级到BitComet'):
                 txtfile.writelines("subpath :" + subpath)
@@ -665,15 +723,59 @@ def getUndownFileList(tfiles,downedfiles):
 
 
 if __name__ == '__main__':
+    # test()
+
+    # os._exit(0)
+    # loger.info('C5AEA8F99A520790D421FEB7162DDF7A77BD297B'.lower())
+    # strlist=['爱剪辑-48.avi']
+    # findTorrListByStr(strlist,'D:\\temp\\0555\\2022-03-01\\0555\\')
+    # findTorrListByStr(strlist, 'D:\\temp\\0555\\2022-03-01\\0555\\b20\errfiles\\')
+
+    # scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\b30\\")
+    # os._exit(0)
+    # findTorrentByHashcodeInDir("D:\\temp\\0555\\2022-03-01\\","D:\\temp\\backup\\find\\")
+    # scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\b25\\")
+    # scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\normal\\")
+
+    # countHalfFiles(r'g:\down\0555\b43f\un',True)
+    # countHalfFiles(r'G:\down\0555\b31\undone',True)
+    countHalfFiles(r'G:\down\0555\b37', True)
+
+    # countHalfFiles(r'E:\down\0555\b43f\half',True)
+    # filterDownFiles(r'C:\torrent\b43', r'g:\down\0555\b43f\half', 'half')
+    # filterDownFiles(r'C:\torrent\b43', r'e:\down\0555\b43f\half', 'half')
+    # countHalfFiles('d:\\down\\0555\\b42\\half\\',True)
+    # genhalfTorrent('D:\\temp\\chachong\\')
+    # filterDownFiles(r'D:\temp\b31', r'D:\temp\sp', 'y')
+    # writeTorrDetail('D:\\360Downloads\\1228\\')
+    # clearXunleiFile("G:\\down\\0555\\b40\\half\\")
+
+    filterDownFiles(r'D:\t7\2022-03-01\0555\b31', r'g:\down\0555\b43f\un', 'y')
+    os._exit(0)
+    # filterDownFiles(r'C:\torrent\b40', r'G:\down\0555\b40\half', 'halfing')
+    # filterDownFiles(r'C:\torrent\b40', r'G:\down\0555\b40\stop', 'stop')
+    filterDownFiles(r'C:\torrent\b43', r'g:\down\0555\b43f\un', 'y')
+    filterDownFiles(r'C:\torrent\b43', r'e:\down\0555\b43f\un', 'y')
+    filterDownFiles(r'C:\torrent\b42', r'd:\down\0555\b42\un', 'y')
+    filterDownFiles(r'C:\torrent\b42', r'F:\down\0555\b42\un', 'y')
+
+    filterDownFiles(r'C:\torrent\b40', r'G:\down\0555\b40\un', 'y')
+    filterDownFiles(r'C:\torrent\b39', r'E:\down\0555\b39\un', 'y')
+    filterDownFiles(r'C:\torrent\b40', r'F:\down\0555\b40\un', 'y')
+    # getTorrDetail(r'C:\torrent\b39')
+    # getTorrDetail(r'C:\torrent\b43')
+    os._exit(0)
+
+
     # filterBigfiles('D:\\Program20190718\\2022-03-01\\1229\\1\\', 2000)
     # filterBigfiles('D:\\Program20190718\\2022-03-01\\1229\\5\\', 2000)
     # findTorrentByDirName('D:\\temp\\0555\\', 'Irisadamsone','thread-1')
-    findTorrentByDirName('D:\\temp\\0555\\2022-03-01\\0555\\', '373P', 'thread-21')
+    # findTorrentByDirName('D:\\temp\\0555\\2022-03-01\\0555\\', '373P', 'thread-21')
     # findTorrentByDirName('D:\\temp\\0555\\', '长腿高跟 脸穴同框自慰玩穴 开档骚丝袜 高清7', 'thread-1')
     # findTorrentByDirName('D:\\temp\\0555\\', '长腿高跟 脸穴同框自慰玩穴 开档骚丝袜 高清7','thread-1')
 
 
-    os._exit(0)
+    # os._exit(0)
 
     #comparefiles("D:\\temp\\0555\\2.torrent","D:\\temp\\0555\\259\\")
     # filename="STP31812 穿情趣裝的美女狐狸精,全程露臉妩媚誘人,聽狼友指揮互動撩騷,揉奶玩逼自慰呻吟,表情好騷火辣豔舞別錯過"

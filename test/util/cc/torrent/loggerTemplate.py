@@ -4,7 +4,7 @@ def initlog():
     log = logging.getLogger('torr')
     log.setLevel(logging.DEBUG)
     # 创建一个handler，用于写入日志文件
-    fh = logging.FileHandler('torrscan.log', encoding='utf-8')
+    fh = logging.FileHandler('../torrscan.log', encoding='utf-8')
     fh.setLevel(logging.DEBUG)
 
     # 再创建一个handler，用于输出到控制台

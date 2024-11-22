@@ -1,7 +1,7 @@
 import pymysql
 import loggerTemplate
 
-loger=loggerTemplate.log
+loger= loggerTemplate.log
 con = pymysql.connect(
 	host='localhost',
 	port=3306,

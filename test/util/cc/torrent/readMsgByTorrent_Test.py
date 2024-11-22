@@ -4,9 +4,8 @@ from torrentool.exceptions import BencodeDecodingError
 import os
 import shutil
 # import mysqlTemplate as dbtool
-import queue, threading
+import queue
 import loggerTemplate
-
 loger = loggerTemplate.log
 
 HALF_NAME_PREFIX = 'HALF-'
@@ -145,8 +144,8 @@ def getTorrentByDetails(str, filepath):
             if portion[1] == ".torrent":
                 path = os.path.join(dirpath, filename)
                 # loger.info('torr=='+torr)
-                try:
-                    my_torrent = Torrent.from_file(path)
+                my_torrent = loadTorr(path)
+                if my_torrent is not None:
                     for torrfile in my_torrent.files:
                         # loger.info('name:'+torrfile.name)
                         if (torrfile.name.startswith(str)):
@@ -156,12 +155,6 @@ def getTorrentByDetails(str, filepath):
                             loger.info('str:==>' + str)
                             # loger.info(my_torrent.files)
                             break
-                except BencodeDecodingError:
-                    loger.info("error " + filename)
-                    continue
-                except IndexError:
-                    loger.info("error " + filename)
-                    continue
 
 
 # finally:
@@ -319,16 +312,12 @@ def geneTorrentDic(torrpath):
             if portion[1] == ".torrent":
                 torr = os.path.join(dirpath, filename)
                 # loger.info('torr=='+torr)
-                try:
-                    my_torrent = Torrent.from_file(torr)
-                except BencodeDecodingError:
-                    print("error " + torrpath)
-                    continue
-                except IndexError:
-                    print("error " + torrpath)
+                my_torrent = loadTorr(torr)
+                if my_torrent is None:
                     continue
                 torrlist.append(my_torrent.name)
                 torrNamelist.append(torr)
+
     torrDict = dict(zip(torrlist, torrNamelist))
     return torrDict
 
@@ -388,21 +377,12 @@ def getTorrDetail(filepath):
             if portion[1] == ".torrent":
                 # loger.info(torr)
                 txtfile.writelines(torr + '\r')
-                try:
-                    my_torrent = Torrent.from_file(torr)
-                    tlen = my_torrent.total_size / len
-                    txtfile.writelines(str(tlen) + '\r')
+                my_torrent =loadTorr(torr)
+                if my_torrent is None:
+                    continue
+                tlen = my_torrent.total_size / len
+                txtfile.writelines(str(tlen) + '\r')
 
-                except BencodeDecodingError:
-                    txtfile.writelines('torrent file is error ')
-                    txtfile.writelines('****************************')
-                    print("error " + torr)
-                    continue
-                except IndexError:
-                    txtfile.writelines('torrent file is error ')
-                    txtfile.writelines('****************************')
-                    print("error " + torr)
-                    continue
                 txtfile.writelines(str(my_torrent.files) + '\r\n')
                 txtfile.writelines(my_torrent.info_hash + '\r')
                 # loger.info(my_torrent.total_size / len)
@@ -776,7 +756,7 @@ def countHalfFiles(downdir, deltag):
                 tfile = os.path.join(root, file_name)
                 loger.info("tfile:" + tfile)
                 loger.info("root:" + root)
-                comparefiles(tfile, root)
+                comparefiles(tfile, root, deltag)
 
 
 ### downdir 下载目录，包含了种子文件的头目录
@@ -823,6 +803,7 @@ def comparefiles(tfile, downdir, deltag):
     txtfile.writelines('downdir' + downdir + '\r\n')
     loger.info('downdir' + downdir)
     torrentmap = {}
+    #能下载的，大概率种子文件都能用，所以这里没有try catch
     my_torrent = Torrent.from_file(tfile)
 
     for file in my_torrent.files:  # 遍历种子文件
@@ -920,7 +901,7 @@ if __name__ == '__main__':
     # strlist=['爱剪辑-48.avi']
     # findTorrListByStr(strlist,'D:\\temp\\0555\\2022-03-01\\0555\\')
     # findTorrListByStr(strlist, 'D:\\temp\\0555\\2022-03-01\\0555\\b20\errfiles\\')
-
+    getTorrDetail(r'D:\temp\0555\2022-03-01\0555\b36')
     # scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\b30\\")
     # os._exit(0)
     # findTorrentByHashcodeInDir("D:\\temp\\0555\\2022-03-01\\","D:\\temp\\backup\\find\\")
@@ -934,5 +915,5 @@ if __name__ == '__main__':
     #filterDownFiles(r'C:\torrent\b39', r'E:\down\0555\b39', 'y')
     # filterDownFiles(r'C:\torrent\b39', r'E:\down\0555\b39\un', 'y')
     # getTorrDetail(r'C:\torrent\b39')
-    getTorrDetail(r'D:\temp\0555\2022-03-01\0555\b43')
+   #getTorrDetail(r'D:\temp\0555\2022-03-01\0555\b43')
     os._exit(0)
