@@ -13,7 +13,7 @@ class DownLoadCheck():
         torrent_info = Torrent.from_file(seed_path)
         file_list = torrent_info.files
 
-        blacklist = []
+        blacklist = set()
 
         # 遍历torrlist并根据filetype和filename进行过滤和处理
         for torr in file_list:
@@ -25,7 +25,7 @@ class DownLoadCheck():
                 # 如果是文件类型，并且filename不匹配（因为要排除1.html）
                 if file_or_dir_name != filename:
                     # 将最后一部分添加到黑名单列表
-                    blacklist.append(file_or_dir_name)
+                    blacklist.add(file_or_dir_name)
             elif filetype == 'D':
                 # 如果是文件夹类型
                 # 将name按\\分割成多个部分
@@ -36,23 +36,38 @@ class DownLoadCheck():
                     # 如果包含指定的文件夹名，则跳过该文件（即不将其添加到黑名单中）
                     continue
                 # 如果不包含指定的文件夹名，则将最后一部分添加到黑名单中
-                blacklist.append(parts[-1])
+                blacklist.add(parts[-1])
             elif filetype=='FS':
                 if filename in file_or_dir_name:
                     continue
-                blacklist.append(file_or_dir_name)
+                blacklist.add(file_or_dir_name)
 
         # 生成以毫秒数命名的黑名单文件
+        self.gen_blacklist(blacklist,None)
+
+    #根据数据列表导出blacklist文件，并打印
+    def gen_blacklist(self,blacklist,filename):
+        blacklist=list(blacklist)
+        # 生成以毫秒数命名的黑名单文件
         timestamp = int(time.time() * 1000)
-        blacklist_file = f"blacklist_{timestamp}.json"
-        with open(blacklist_file, "w",encoding='utf-8') as f:
-            json.dump(blacklist, f, ensure_ascii=False,indent=4)
+        if filename is not None:
+            blacklist_file=filename
+        else:
+            blacklist_file = f"blacklist_{timestamp}.json"
+        with open(blacklist_file, "w", encoding='utf-8') as f:
+            json.dump(blacklist, f, ensure_ascii=False, indent=4)
 
         # 打印黑名单
         print(f"Blacklist generated and saved to {blacklist_file}")
         for item in blacklist:
-            print(item)
-
+            print("\""+item+"\",")
+    def querystr_in_blacklist(self,str,black_list_path):
+        blist=self.load_blacklist(black_list_path)
+        if(blist is not None and len(blist)>0):
+            if str in blist:
+                print("blacklist has "+str)
+            else:
+                print(str+" not in blacklist  " )
     def load_blacklist(self,blacklist_path):
         with open(blacklist_path, "r", encoding='utf-8') as f:
             blacklist = json.load(f)
@@ -123,14 +138,14 @@ class DownLoadCheck():
 
 dlcheck=DownLoadCheck()
 if __name__ == '__main__':
-    dlcheck.merge_blacklists(r"D:\CODE\github\mahjong\python-mahjong\test\util\cc\torrent\bl", "bl.json")
+    # dlcheck.merge_blacklists(r"D:\CODE\github\mahjong\python-mahjong\test\util\cc\torrent\bl", "bl.json")
 
 # blacklist=dlcheck.load_blacklist(r"merged_blacklist.json")
 #torrpath 中文文件目录
 # 示
 # readtorr(r"D:\temp\112\1 (1).torrent")
-# generate_blacklist(r"D:\temp\112\1 (6).torrent", "2048.cc", "FS")
-
+    dlcheck.generate_blacklist(r"D:\temp\112\111.torrent", "六月最新極品泄密流出 極品反差婊氣質眼鏡美女王璐璐與研究生男友自拍性愛視頻", "FS")
+#     dlcheck.querystr_in_blacklist('JavLand.Link.jpg',r'D:\CODE\github\mahjong\python-mahjong\test\util\cc\torrent\bl.json')
 #generate_blacklist(r"D:\temp\112\1 (7).torrent", "mp4", "FS")
 
 # merge_blacklists(r"D:\CODE\github\mahjong\python-mahjong\test\util\cc\torrent\blacklist",
