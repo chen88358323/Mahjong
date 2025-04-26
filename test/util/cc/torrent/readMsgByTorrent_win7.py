@@ -189,7 +189,8 @@ def filterBigfiles(torrpath, filterLen):
 
 
 # 根据文件夹路径，生成扫描文件，并写入结果
-def log(filepath, name):
+def log(filepath, name,append):
+    mkdirs(filepath)
     dirname = os.path.dirname(filepath)
     # 文件夹最后一层名称
     basename = os.path.split(dirname)[-1]
@@ -197,7 +198,10 @@ def log(filepath, name):
     print('basename==>' + basename)
     print('dirname==>' + dirname)
     print('txtfile===>' + txtpath)
-    txtfile = open(txtpath, 'w+', encoding='utf-8')
+    if (append):
+        txtfile = open(txtpath, 'a', encoding='utf-8')
+    else:
+        txtfile = open(txtpath, 'w', encoding='utf-8')
     return txtfile
 # 根据文件夹路径，生成扫描文件，并写入结果
 # append 是否追加，追加True 新建False
@@ -335,7 +339,7 @@ def filterDownFiles(torrpath, filepath, subDirName):
     for filename in os.listdir(filepath):
         if os.path.isdir(os.path.join(filepath, filename)):
             dirList.append(filename)
-            print('dirname   ' + filename)
+            loger.info('dirname   ' + filename)
         # else:
         #     portion = os.path.splitext(filename)
         #     print('00000  ' + portion[0])
@@ -351,19 +355,19 @@ def filterDownFiles(torrpath, filepath, subDirName):
     # print('dirList'+str(dirList))
     # print('torrlist' + str(torrlist))
     rslist = list(reset)
-    print("  =====================  ")
-    print(rslist)
+    loger.info("  =====================  ")
+    loger.info(rslist)
 
-    torrDonePath = torrpath + subDirName
+    torrDonePath = torrpath + os.path.sep + subDirName + os.path.sep
     mkdirs(torrDonePath)
 
-    finishFilePath = filepath + subDirName
+    finishFilePath = filepath+os.path.sep+subDirName+ os.path.sep
     mkdirs(finishFilePath)
 
     for samefile in rslist:
-        print(" ****   ")
+        loger.info(" ****   ")
         # print(torrDict[samefile])
-        print(os.path.basename(torrDict[samefile]))#文件名
+        loger.info(os.path.basename(torrDict[samefile]))#文件名
         newTorrFile = torrDonePath + os.path.basename(torrDict[samefile])
 
         finishFile = finishFilePath + samefile
@@ -373,9 +377,13 @@ def filterDownFiles(torrpath, filepath, subDirName):
             loger.error("****************种子文件**************************")
             loger.error(newTorrFile)
             loger.error("****************重复文件**************************")
-            loger.error(filepath + os.path.sep + samefile, finishFile)
+            loger.error(filepath + os.path.sep + samefile+  finishFile)
             os.remove(torrDict[samefile])
         else:  # 移动种子
+            loger.debug("********原种子地址*************")
+            loger.debug(torrDict[samefile])
+            loger.debug("********新种子地址*************")
+            loger.debug(newTorrFile)
             shutil.move(torrDict[samefile], newTorrFile)
             # 文件已经下载过了，重新命名复制
         if os.path.exists(finishFile):
@@ -385,13 +393,15 @@ def filterDownFiles(torrpath, filepath, subDirName):
             mkdirs(finishFile)
         # 移动完成文件
         shutil.move(filepath + os.path.sep + samefile, finishFile)
-        loger.info('finishFile:' + finishFile)
+        loger.debug("********原文件地址*************")
+        loger.debug(filepath + os.path.sep + samefile)
+        loger.debug("********新文件地址*************")
+        loger.debug(finishFile)
         # 判断pdf是否存在，存在， 转移至新路径
         movePdf(torrDict[samefile], finishFile)
         # 移动完成文件
-        print('finishFile:' + finishFile)
 
-    print('移动种子文件：' + str(len(rslist)))
+    loger.info('移动种子文件：' + str(len(rslist)))
 # 将种子路径转化为pdf路径
 def nameTorr2Pdf(torrfullpath):
     if(torrfullpath  is None):
@@ -599,21 +609,23 @@ def countHalfFiles(downdir,deltag):
         for file_name in files_list:
             if file_name.endswith('torrent'):
                 tfile=os.path.join(root, file_name)
-                print("tfile:"+tfile)
-                print("root:"+root)
+                loger.info("tfile:"+tfile)
+                loger.info("root:"+root)
                 comparefiles(tfile,root,deltag)
+
 dlcheck = DownLoadCheck()
-blacklist = dlcheck.load_blacklist(r"merged_blacklist.json")
+dlcheck.merge_blacklists(r".", "bl.json",False)
+blacklist=dlcheck.load_blacklist(r"bl.json")
 
     #tfiles 种子里的文件，
     #downdir 下载目录，包含了种子文件的头目录
     # deltag 是否删除.bt.xltd的文件 True 删除 False 不删除
     #todo  写日志
 def comparefiles(tfile,downdir,deltag):
-    txtfile = log(downdir, '---comparefiles',False)
-    txtfile.writelines('tfile  ' + tfile + '\r\n')
-    txtfile.writelines('downdir  ' + downdir + '\r\n')
-    print('downdir  ' + downdir)
+    # txtfile = log(downdir, '---comparefiles',False)
+    loger.debug('tfile  ' + tfile + '\r\n')
+    loger.debug('downdir  ' + downdir + '\r\n')
+    loger.debug('downdir  ' + downdir)
     torrentmap = {}
     my_torrent = Torrent.from_file(tfile)
 
@@ -622,7 +634,11 @@ def comparefiles(tfile,downdir,deltag):
         tfilename = file.name.replace('\\\\', '\\')
         # print('tfilename'+tfilename)
         #截取359目录，由于可能会改名，所以
-        subpath = tfilename.split('\\', 1)[1]
+        try:
+            subpath = tfilename.split('\\', 1)[1]
+        except IndexError:
+            print('subpath is none ==>'+tfilename)
+            continue
         if subpath.__contains__('\\'):
             subname = subpath.split('\\', 1)[1]
         else:
@@ -632,8 +648,10 @@ def comparefiles(tfile,downdir,deltag):
         if subname in blacklist:
             continue
         if subname not in filterfileArray:
-            if not subname.__contains__('如果您看到此文件，请升级到BitComet'):
-                txtfile.writelines("subpath :" + subpath)
+            if subname.__contains__('如果您看到此文件，请升级到BitComet'):
+                loger.info(subname)
+            else:
+                loger.debug("subpath :" + subpath)
                 torrentmap.setdefault(subpath, file.length)
         ## 待增加过滤无用文件实现
 
@@ -659,10 +677,7 @@ def comparefiles(tfile,downdir,deltag):
                 #print("full path:"+fullname)
                 # fullname=os.path.join(dirpath, ' '+filename)#torrent的file会有空格， 很奇怪
                 torrfilepath=fullname.replace(downdir ,'')
-
-                txtfile.writelines("torrfilepath :" + torrfilepath)
                 torrfilepath = clearPath(torrfilepath)
-                txtfile.writelines("torrfilepathX :" + torrfilepath)
                 #print("size"+str(round(fsize/m,2))+'mb')
                 downloadmap.setdefault(torrfilepath,fsize)#生成文件列表
 
@@ -670,7 +685,7 @@ def comparefiles(tfile,downdir,deltag):
         #print(str(file))
     downloadfilelist = list(downloadmap.keys())
     tfiellist=list(torrentmap.keys())
-    txtfile.writelines('downloadfilelist'+str(len(downloadfilelist))+'   '+ '\r\n')#+str(downloadfilelist)
+    loger.debug('downloadfilelist'+str(len(downloadfilelist))+'   '+ '\r\n')#+str(downloadfilelist)
     # for dfile in downloadfilelist:
     #print('tfiellist bf' + str(len(tfiellist)) + '   ' + str(tfiellist))
     tfiellist=getUndownFileList(tfiellist,downloadfilelist)
@@ -681,20 +696,27 @@ def comparefiles(tfile,downdir,deltag):
     #             tfiellist.remove(cleanfile)
 
     downloadfilesize=0#待下载文件总大小
-    txtfile.writelines("********************v1.0 待下载文件列表"+ str(len(tfiellist))+"个***************************"+ '\r\n')
-    for needdownfile in tfiellist:
+    loger.debug("********************v1.0 待下载文件列表"+ str(len(tfiellist))+"个***************************"+ '\r\n')
 
-        tfsize=torrentmap.get(needdownfile)
-        downloadfilesize+=tfsize
-        tfsize =round(tfsize / m, 2)
-        txtfile.writelines(needdownfile+ '\r\n')
-        txtfile.writelines('size:'+str(tfsize)+"mb"+ '\r\n')
-    downloadfilesize=round(downloadfilesize / m, 2)
-    if(downloadfilesize<2 or len(tfiellist)<10):#小于2m,近似于下载完成优先处理
-        finishedtorr = log(downdir, '-nearly', False)
-        finishedtorr.close()
-    txtfile.writelines('总占用空间":'+str(downloadfilesize)+"mb"+ '\r\n')
-    txtfile.close()
+    if tfiellist is None or len(tfiellist)==0:
+        return
+        # 未完成的文件列表，新建文件打印
+    else:
+        undone_file = log("" + downdir, '--undone', False)
+        tfiellist = set(tfiellist)
+        tfiellist_namelist = list()
+        for needdownfile in tfiellist:
+
+            tfsize=torrentmap.get(needdownfile)
+            downloadfilesize+=tfsize
+            tfsize =round(tfsize / m, 2)
+            fname = os.path.basename(needdownfile)
+            tfiellist_namelist.append(fname)
+            undone_file.writelines("\"" + fname + "\"," + '\r\n')
+
+        undone_file.writelines('总占用空间":' + str(round(downloadfilesize / m, 2)) + "mb" + '\r\n')
+        undone_file.close()
+        dlcheck.gen_blacklist(tfiellist_namelist, None)
 
 #解决py3.7 兼容性问题，py3.10可以不使用此方法
 def clearPath(tfilepath):
@@ -718,28 +740,42 @@ def getUndownFileList(tfiles,downedfiles):
             tmap.pop(dfile)
 
     return  tmap.values()
-
-
+fdmsuffix='.fdmdownload'
+def clearXunleiFile(filepath):
+    #filepath = 'D:\\temp\\593254315050521\\demo\\'
+    for dirpath, dirnames, filenames in os.walk(filepath):
+        for filename in filenames:
+            if filename.endswith(xunleisuffix) or filename.endswith(fdmsuffix):
+                fullname=os.path.join(dirpath,filename)
+                try:
+                    loger.info('file: '+fullname)
+                    os.remove(fullname)
+                except UnicodeEncodeError:
+                    # non_bmp_map = dict.fromkeys(range(0x10000, sys.maxunicode + 1), 0xfffd)
+                    # fullname=fullname.translate(non_bmp_map)
+                    loger.info('full: ' + fullname)
+                    os.remove(fullname)
 
 
 if __name__ == '__main__':
     # test()
-
-    # os._exit(0)
-    # loger.info('C5AEA8F99A520790D421FEB7162DDF7A77BD297B'.lower())
+    #getTorrDetail(r'D:\temp\0555\2022-03-01\1229\hj')
+    #os._exit(0)
+    # lger.info('C5AEA8F99A520790D421FEB7162DDF7A77BD297B'.lower())
     # strlist=['爱剪辑-48.avi']
     # findTorrListByStr(strlist,'D:\\temp\\0555\\2022-03-01\\0555\\')
     # findTorrListByStr(strlist, 'D:\\temp\\0555\\2022-03-01\\0555\\b20\errfiles\\')
 
     # scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\b30\\")
     # os._exit(0)
-    # findTorrentByHashcodeInDir("D:\\temp\\0555\\2022-03-01\\","D:\\temp\\backup\\find\\")
+    # findTorrentByHashcodeInDir("D:\\temp\\0555\\2022-03-01\\",
+    # "D:\\temp\\backup\\find\\")
     # scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\b25\\")
     # scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\normal\\")
 
     # countHalfFiles(r'g:\down\0555\b43f\un',True)
     # countHalfFiles(r'G:\down\0555\b31\undone',True)
-    countHalfFiles(r'G:\down\0555\b37', True)
+    #countHalfFiles(r'G:\down\0555\b37', True)
 
     # countHalfFiles(r'E:\down\0555\b43f\half',True)
     # filterDownFiles(r'C:\torrent\b43', r'g:\down\0555\b43f\half', 'half')
@@ -750,7 +786,8 @@ if __name__ == '__main__':
     # writeTorrDetail('D:\\360Downloads\\1228\\')
     # clearXunleiFile("G:\\down\\0555\\b40\\half\\")
 
-    filterDownFiles(r'D:\t7\2022-03-01\0555\b31', r'g:\down\0555\b43f\un', 'y')
+    filterDownFiles(r'F:\2022-03-01\0555\b44', r'F:\down\0555\b44\un', 'y')
+    countHalfFiles(r'F:\down\0555\b44\un\y', True)
     os._exit(0)
     # filterDownFiles(r'C:\torrent\b40', r'G:\down\0555\b40\half', 'halfing')
     # filterDownFiles(r'C:\torrent\b40', r'G:\down\0555\b40\stop', 'stop')

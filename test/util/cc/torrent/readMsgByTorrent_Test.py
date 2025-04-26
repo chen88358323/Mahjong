@@ -3,7 +3,7 @@ from torrentool.api import Torrent
 from torrentool.exceptions import BencodeDecodingError
 import os
 import shutil
-# import mysqlTemplate as dbtool
+import mysqlTemplate as dbtool
 import queue
 import loggerTemplate
 loger = loggerTemplate.log
@@ -901,8 +901,8 @@ if __name__ == '__main__':
     # strlist=['爱剪辑-48.avi']
     # findTorrListByStr(strlist,'D:\\temp\\0555\\2022-03-01\\0555\\')
     # findTorrListByStr(strlist, 'D:\\temp\\0555\\2022-03-01\\0555\\b20\errfiles\\')
-    getTorrDetail(r'D:\temp\0555\2022-03-01\0555\b36')
-    # scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\b30\\")
+    #getTorrDetail(r'D:\temp\0555\2022-03-01\0555\b44')
+    # scanTorrentsIntoDB("D:\temp\0555\2022-03-01\0555\b44")
     # os._exit(0)
     # findTorrentByHashcodeInDir("D:\\temp\\0555\\2022-03-01\\","D:\\temp\\backup\\find\\")
     # scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\b25\\")
@@ -915,5 +915,6 @@ if __name__ == '__main__':
     #filterDownFiles(r'C:\torrent\b39', r'E:\down\0555\b39', 'y')
     # filterDownFiles(r'C:\torrent\b39', r'E:\down\0555\b39\un', 'y')
     # getTorrDetail(r'C:\torrent\b39')
-   #getTorrDetail(r'D:\temp\0555\2022-03-01\0555\b43')
+    getTorrDetail(r'D:\temp\0555\2022-03-01\14')
+    # getTorrDetail(r'D:\temp\0555\2022-03-01\1127\1')
     os._exit(0)
