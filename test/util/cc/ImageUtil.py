@@ -110,9 +110,32 @@ def duplicateImageFilter(filePath,duplicateCount):
     #     shutil.move(image, save_path)
     #     print("正在移除重复照片：", image)
 
+def move_duplicate_images(source_folder, destination_folder):
+    # 确保目标文件夹存在，如果不存在则创建
+    if not os.path.exists(destination_folder):
+        os.makedirs(destination_folder)
+
+    # 遍历源文件夹中的所有文件
+    for filename in os.listdir(source_folder):
+        # 检查文件名是否以 (2).jpg 结尾
+        if filename.endswith('(2).jpg'):
+            # 构造完整的源文件路径
+            src_file_path = os.path.join(source_folder, filename)
+            # 构造完整的目标文件路径
+            dest_file_path = os.path.join(destination_folder, filename)
+            # 移动文件到目标文件夹
+            shutil.move(src_file_path, dest_file_path)
+            print(f"Moved: {src_file_path} to {dest_file_path}")
+
 
 if __name__ == '__main__':
+    # 指定源文件夹和目标文件夹路径
+    source_folder = r'G:\down\0555\b38\un\y\六月无水印福利！露脸熟女天花板！推特高贵极品韵味十足熟女女神【徐娘】私拍福利，充满欲望的鲍鱼自摸\P'  # 替换为你的源文件夹路径
+    destination_folder = r'G:\down\0555\b38\un\y\六月无水印福利！露脸熟女天花板！推特高贵极品韵味十足熟女女神【徐娘】私拍福利，充满欲望的鲍鱼自摸\P\dup'  # 替换为你的目标文件夹路径
 
+    # 调用函数移动文件
+    move_duplicate_images(source_folder, destination_folder)
+    os._exit(0)
     filePath = r'D:\360Downloads\test'  # 要去重的文件夹
     for parent, dirnames, filenames in os.walk(filePath):
         for dir in dirnames:

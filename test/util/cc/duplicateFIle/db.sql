@@ -109,3 +109,4 @@ and a.filename =b.filename
 select * from filedetails f where hcode ='654253eb1e04ab830f00d8fcd73a2516'
 
 select * from filedetails_dup fd  where hcode ='654253eb1e04ab830f00d8fcd73a2516'
+

@@ -1,6 +1,6 @@
 import time,random
 import queue,threading
-import readMsgByTorrent as torrtool
+
 q = queue.Queue()
 
 

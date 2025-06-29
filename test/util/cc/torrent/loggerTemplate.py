@@ -1,4 +1,5 @@
 import logging
+import os
 def initlog():
     # 创建一个logger
     log = logging.getLogger('torr')
@@ -20,3 +21,35 @@ def initlog():
     log.addHandler(ch)
     return log
 log=initlog()
+def file_writer(filepath, name,append):
+    mkdirs(filepath)
+    dirname = os.path.dirname(filepath)
+    # 文件夹最后一层名称
+    basename = os.path.split(dirname)[-1]
+
+    log.info('basename==>' + basename)
+    log.info('dirname==>' + dirname)
+    txtpath = filepath +os.path.sep+ basename + name + '.txt'
+    log.info('txtfile===>' + txtpath)
+    if(append):
+        txtfile = open(txtpath, 'a', encoding='utf-8')
+    else:
+        txtfile = open(txtpath, 'w', encoding='utf-8')
+    return txtfile
+#filepath
+#filename
+#append 文件是否追加，True追加，False覆盖
+def file_writer_straght(filepath, filename,append):
+    mkdirs(filepath)
+    # 文件夹最后一层名称
+    txtpath = filepath +os.path.sep+ filename + '.txt'
+    log.info('txtfile===>' + txtpath)
+    if(append):
+        txtfile = open(txtpath, 'a', encoding='utf-8')
+    else:
+        txtfile = open(txtpath, 'w', encoding='utf-8')
+    return txtfile
+def mkdirs(path):
+    if (not os.path.exists(path)):
+        log.info('mkdir:' + str(path))
+        os.mkdir(path)

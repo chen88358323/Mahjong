@@ -17,7 +17,13 @@ def read_pdf2txt_mupdf(pdfpath):
             print(text)
 
 if __name__=='__main__':
-    path=r'D:\DOC\雅思\雅思彩色词汇表\彩色词汇表\list1_10 new.pdf'
+    # path=r'D:\DOC\雅思\雅思彩色词汇表\彩色词汇表\list1_10 new.pdf'
+    # # read_pdf2txt_plumber(path)
+    # print("**********************")
+    # read_pdf2txt_mupdf(path)
+
+    path=r'D:\temp\112\雅思阅读7分讲义.pdf'
     # read_pdf2txt_plumber(path)
     print("**********************")
     read_pdf2txt_mupdf(path)
+

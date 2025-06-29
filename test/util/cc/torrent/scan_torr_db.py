@@ -441,4 +441,5 @@ def moveduplicateTorr(tfile):
 
 
 if __name__ == '__main__':
-    scanTorrentsIntoDB(r"D:\temp\0555\2022-03-01\0555\b55")
+    scanTorrentsIntoDB(r"D:\temp\0555\2022-03-01\0555\b57")
+    scanTorrentsIntoDB(r"D:\temp\0555\2022-03-01\0555\b58")

@@ -915,6 +915,7 @@ if __name__ == '__main__':
     #filterDownFiles(r'C:\torrent\b39', r'E:\down\0555\b39', 'y')
     # filterDownFiles(r'C:\torrent\b39', r'E:\down\0555\b39\un', 'y')
     # getTorrDetail(r'C:\torrent\b39')
-    getTorrDetail(r'D:\temp\0555\2022-03-01\14')
+    getTorrDetail(r'D:\temp\0555\2022-03-01\0555\b57')
+    getTorrDetail(r'D:\temp\0555\2022-03-01\0555\b58')
     # getTorrDetail(r'D:\temp\0555\2022-03-01\1127\1')
     os._exit(0)

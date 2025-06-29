@@ -47,7 +47,7 @@ class local_cache():
 
     #根据指定的key列表删除元素
     #返回更新后的cache与删除字典列表
-    def clearCacheByKeyList(cache,klist):
+    def clearCacheByKeyList(self,cache,klist):
         if klist is None or len(klist)==0:
             return cache,None
         cachep=cache.copy()
@@ -74,7 +74,7 @@ class local_cache():
 
 
 
-    def compare_snapshots(snapshot1, snapshot2):
+    def compare_snapshots(self,snapshot1, snapshot2):
         """
         Compare two snapshots and return files added and deleted.
         """

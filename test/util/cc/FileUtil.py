@@ -360,7 +360,17 @@ def cutVideoHead(fpath):
                 print(newfile)
 
 
+
+
+
 if __name__ == '__main__':
+    # 指定源文件夹和目标文件夹路径
+    source_folder = r'G:\down\0555\b38\un\y\六月无水印福利！露脸熟女天花板！推特高贵极品韵味十足熟女女神【徐娘】私拍福利，充满欲望的鲍鱼自摸\P'  # 替换为你的源文件夹路径
+    destination_folder = r'G:\down\0555\b38\un\y\六月无水印福利！露脸熟女天花板！推特高贵极品韵味十足熟女女神【徐娘】私拍福利，充满欲望的鲍鱼自摸\P\dup'  # 替换为你的目标文件夹路径
+
+    # 调用函数移动文件
+
+
     cutVideoHead('I:\\done\\daifenlei\\《震撼精品 推薦》私密資源交換區Q群'
                  '貼吧T群内部收集整理各種反差婊母狗自拍不雅視圖美女如雲基本露臉短小精悍637P 295V\\视图\\V\\1')
     # clearDirName('D:\\temp\\dist\\')
