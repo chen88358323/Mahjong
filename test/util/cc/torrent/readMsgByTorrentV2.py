@@ -2,19 +2,16 @@ from torrentool.api import Torrent
 import zipfile
 from pathlib import Path
 
-# from torrentool.api import TorrentFile
 from torrentool.exceptions import BencodeDecodingError
 from torrent_download_files_check import  DownLoadCheck
 import os
-import  shutil
-import mysqlTemplate as dbtool
-import time,copy
+import shutil
 import loggerTemplate
-
+from collections import defaultdict
 loger= loggerTemplate.log
 TORR_ERROR_DIRNAME='errorbak'
 HALF_NAME_PREFIX='HALF-'
-logpath='D:\\temp\\0555\\'
+# logpath='D:\\temp\\0555\\'
 
 array = ['【01axg.xyz】.jpg', '02AXG.XYZ.png', '03axg.XYZ.png', '8axg.xyz.png',
          'duplicatedirtyData.txt'
@@ -35,7 +32,22 @@ def getDulicateFiles():
             absPath = dirpath + filename
             if(absPath.endswith(prefix)):
                 loger.info(absPath)
+#获取torrpath 当前文件夹的目录列表，文件列表
+#todo  如果一个文件夹夹 02 有多个种子与对应下载文件会有问题
+#不包含子目录
+#返回值dir_dict{hcode,dir}  single_file_list 为路径名
+def get_file_dir_list(down_files_path):
+    single_file_list = []
+    # 搜集已下载文件列表 TODO 增加单文件支持
+    for filename  in os.listdir(down_files_path):
+        f = os.path.join(down_files_path, filename)
+        if filename=='y' and os.path.isdir(f):
+            continue
+        if   (os.path.isfile(f)):
+            single_file_list.append(filename)
 
+    loger.debug('待处理单文件个数' + str(len(single_file_list)))
+    return single_file_list
 def findTorrListByStr(strlist,path):
     if strlist is None:
         return
@@ -51,11 +63,11 @@ def loadTorr(torrpath):
         my_torrent = Torrent.from_file(torrpath)
         return  my_torrent
     except BencodeDecodingError:
-        loger.info("error " + torrpath)
+        loger.error("error " + torrpath)
         # slove_bencode_torr(torrpath)
         return None
     except IndexError:
-        loger.info("error " + torrpath)
+        loger.error("error " + torrpath)
         return None
 def loadTorr_and_fixTorr(torrpath,count):
     try:
@@ -63,13 +75,13 @@ def loadTorr_and_fixTorr(torrpath,count):
         return  my_torrent
     except BencodeDecodingError:
         count+=1
-        loger.info("error " + torrpath)
+        loger.error("error " + torrpath)
         if(count<2 and os.path.getsize(torrpath)>1024):
             return slove_bencode_torr(torrpath)
         else:
             return None
     except IndexError:
-        loger.info("error " + torrpath)
+        loger.error("error " + torrpath)
         return None
 
 def slove_bencode_torr(torrfile):
@@ -173,6 +185,8 @@ def movePdf(oldpdfpath,tarpath):
     if os.path.isfile(oldpdf):
         #存在pdf 转移
         pdf_name=os.path.basename(oldpdf)
+        loger.debug("迁移PDF文件 " + oldpdf + '至\n' + tarpath)
+
         shutil.move(oldpdf,tarpath+os.sep+pdf_name)
 # 将种子路径转化为pdf路径
 def nameTorr2Pdf(torrfullpath):
@@ -183,6 +197,7 @@ def nameTorr2Pdf(torrfullpath):
         path ,ext=os.path.splitext(torrfullpath)
         pdfpath=path+'.pdf'
         return pdfpath
+
 # torrpath 种子路径
 # filepath 下载文件路径
 # subDirName转移的子文件夹名称，有y ,half
@@ -257,6 +272,77 @@ def filterDownFiles(torrpath,filepath,subDirName):
 
     loger.info('移动种子文件：'+str(len(rslist)))
 
+# torrpath 种子路径
+# filepath 下载文件路径
+# subDirName转移的子文件夹名称，有y ,half
+# 1.scan torr path,get dict  key 种子名称   val 种子路径
+# 2. find same move
+
+###Q1. 需要给我hcode处理，单文件也需要处理
+def filterDownFilesV2(torrpath, filepath, subDirName):
+    # dir_list = []
+    # single_file_list=[]
+
+    # 扫描下载完成文件夹
+    dir_dict = query_torr_dir_dict_byDir(filepath,True,'y')
+    # 扫描下载完成单文件
+    single_file_list=get_file_dir_list(filepath)
+
+    #扫描种子文件夹
+    single_files_torr_dict,muti_files_torr_dict = geneTorrentDicV2(torrpath)
+
+    #生成转以后得文件夹
+    torrDonePath = build_done_dir(torrpath,subDirName)
+    finishFilePath = build_done_dir(filepath,subDirName)
+
+    #1.dir filter
+    filter_torr_dirs(dir_dict,muti_files_torr_dict,
+                     torrpath, filepath,
+                     torrDonePath, finishFilePath)
+    #2.single file filter
+    filter_torr_files(single_file_list,single_files_torr_dict,
+                      torrpath, filepath,
+                      torrDonePath, finishFilePath)
+
+    # for samefile in rslist:
+    #     loger.info(" ****   ")
+    #     # loger.info(torrDict[samefile])
+    #     loger.info(os.path.basename(torrDict[samefile]))
+    #     newTorrFile = torrDonePath + os.path.basename(torrDict[samefile])
+    #
+    #     finishFile = finishFilePath + samefile
+    #     # 已经移动了，删除原有的 并打印提示信息
+    #     if os.path.isfile(newTorrFile):
+    #         loger.error("****************有已经下载过得文件******************")
+    #         loger.error("****************种子文件**************************")
+    #         loger.error(newTorrFile)
+    #         loger.error("****************重复文件**************************")
+    #         loger.error(str(filepath + os.path.sep + samefile) + "   " + str(finishFile))
+    #         os.remove(torrDict[samefile])
+    #     else:  # 移动种子
+    #         loger.debug("********原种子地址*************")
+    #         loger.debug(torrDict[samefile])
+    #         loger.debug("********新种子地址*************")
+    #         loger.debug(newTorrFile)
+    #         shutil.move(torrDict[samefile], newTorrFile)
+    #
+    #     # 文件已经下载过了，重新命名复制
+    #     if os.path.exists(finishFile):
+    #         finishFile = finishFile + '_new'
+    #         # base, ext = os.path.splitext(finishFile)
+    #         # finishFile = f"{base}_new{ext}"  # 修改文件名以避免冲突
+    #         mkdirs(finishFile)
+    #     # 移动完成文件
+    #     shutil.move(filepath + os.path.sep + samefile, finishFile)
+    #     loger.debug("********原文件地址*************")
+    #     loger.debug(filepath + os.path.sep + samefile)
+    #     loger.debug("********新文件地址*************")
+    #     loger.debug(finishFile)
+    #     # 判断pdf是否存在，存在， 转移至新路径
+    #     movePdf(torrDict[samefile], finishFile)
+    #
+    # loger.info('移动种子文件：' + str(len(rslist)))
+
     #计算文件的大小，下载比例
 def countFile(torrpath,filepath):
     # 搜集下载中文件列表
@@ -271,6 +357,149 @@ def countFile(torrpath,filepath):
     torrDict = geneTorrentDic(torrpath)
     #todo
 
+
+#根据种子路径生成词典  key 种子hcode   val 种子路径
+#原则上不会有重复，毕竟文件名不可能重复
+def geneTorrentDicV2(torrpath):
+    torr_muti_file_hcode_list = []
+    torr_single_file_hcode_list = []#只有一个文件
+    torr_muti_file_list = []
+    torr_single_file_list = []#只有一个文件
+    torrNamelist = []
+    torrent_num=0
+
+    for dirpath, dirnames, filenames in os.walk(torrpath):
+        if dirpath=='y':
+            continue
+        for filename in filenames:
+            portion = os.path.splitext(filename)
+            if portion[1] == ".torrent":
+                torrent_num+=1
+                torr = os.path.join(dirpath, filename)
+                # loger.info('torr=='+torr)
+                my_torrent = loadTorr(torr)
+                if my_torrent is None:
+                    continue
+                # loger.info("len(my_torrent.files"+str(len(my_torrent.files)))
+                if (len(my_torrent.files)==1):
+                    torr_single_file_hcode_list.append(my_torrent.info_hash.lower())
+                    torr_single_file_list.append(my_torrent)
+                else:
+                    torr_muti_file_hcode_list.append(my_torrent.info_hash.lower())
+                    torr_muti_file_list.append(my_torrent)
+
+    # todo  id
+    loger.debug("torrent总数:"+str(torrent_num))
+    loger.debug("torrent 下载为文件夹总数:" + str(len(torr_single_file_hcode_list)))
+    loger.debug("torrent 下载为单文件总数:" + str(len(torr_muti_file_hcode_list)))
+    muti_files_torr_dict = dict(zip(torr_muti_file_hcode_list, torr_muti_file_list))
+    single_files_torr_dict = dict(zip(torr_single_file_hcode_list, torr_single_file_list))
+
+    return single_files_torr_dict,muti_files_torr_dict
+
+#dir_dict  下载路径内的种子即可，key为种子code，val为该种子上级目录，即文件下载路径
+#muti_files_torr_dict 为种子字典 ，key为种子code，val为该种子详细信息
+#
+def filter_torr_dirs(dir_dict,muti_files_torr_dict,
+                     torrpath, filepath,
+                     torrDonePath, finishFilePath):
+    if  dir_dict and len(dir_dict)>0 :
+        downloaded_torr_code_list=dir_dict.keys()
+        src_torr_code_list=muti_files_torr_dict.keys()
+        torr_list=set(downloaded_torr_code_list) & set(src_torr_code_list)
+        loger.info("downloaded_torr_code_list")
+        loger.info(str(downloaded_torr_code_list))
+        loger.info("src_torr_code_list")
+        loger.info(str(src_torr_code_list))
+
+        if (torr_list is None or len(torr_list)==0):
+            loger.info("文件目录" + filepath +" 待处理文件数"+ str(len(downloaded_torr_code_list)))
+            loger.info("与种子目录"+torrpath + "没有合并"+" 种子文件数"+ str(len(src_torr_code_list)))
+        else:
+            for code in torr_list:
+                torr_obj=muti_files_torr_dict[code]
+                torr_path = str(Path(torr_obj._filepath))
+                file_dirname = dir_dict[code]
+                loger.debug("code "+code)
+                loger.debug("torr_path " + torr_path)
+                loger.debug("file_dirname " + file_dirname)
+                move_torr(torr_obj.name+'.torrent',torr_path,torrDonePath)
+                tarpath=move_downloaded_files(file_dirname,file_dirname,finishFilePath)
+                movePdf(torr_path,tarpath)
+    else:
+        loger.info(filepath+" 多文件列表为空")
+
+def build_done_dir(fpath,subdirname):
+    if  fpath is None or subdirname is None:
+        return
+    else:
+        if(os.path.split(fpath)==subdirname):
+            loger.error('文件夹无需创建')
+            return fpath
+        else:
+            newpath=fpath + os.path.sep + subdirname+ os.path.sep
+            if not os.path.exists(newpath):
+                mkdirs(newpath)
+            return  newpath
+def move_torr(torr_name,torr_fullname,torr_done_path):
+    if(torr_name is None):
+        torr_name=os.path.split(torr_fullname)
+        new_torr=torr_done_path+torr_name
+        if os.path.exists(new_torr):
+            loger.error("****************该种子文件已经下载过******************")
+            loger.error(new_torr)
+            if torr_fullname != new_torr:
+                os.remove(torr_fullname)
+    else: # 移动种子
+        loger.debug("********原种子地址*************")
+        loger.debug(torr_fullname)
+        loger.debug("********新种子地址*************")
+        loger.debug(torr_done_path)
+        shutil.move(torr_fullname, torr_done_path)
+def move_downloaded_files(dirname,oldpath,finished_path):
+    if(not dirname):
+        dirname=os.path.split(oldpath)
+        newpath=finished_path+dirname
+        if(os.path.exists(newpath)):
+            newpath=newpath+'_new'
+            mkdirs(newpath)
+            loger.debug("迁移下载文件 " + oldpath + ' 至 \n  ' + newpath)
+            shutil.move(oldpath, newpath)
+        return newpath
+    else:
+        loger.debug("迁移下载文件 " + oldpath + ' 至 \n  ' + finished_path)
+        shutil.move(oldpath,finished_path)
+        return  finished_path
+def filter_torr_files(single_file_list,single_files_torr_dict,
+                      torrpath, filepath,
+                      torrDonePath, finishFilePath):
+    if not single_file_list or len(single_file_list)==0:
+        loger.info(filepath + " 下载的单文件列表为空")
+    elif single_files_torr_dict and len(single_files_torr_dict)>0:
+        torrobj_list=single_files_torr_dict.values()
+        for tobj in torrobj_list:
+            try:
+                tname=tobj.files[0].name
+                if tname in single_file_list:
+                    loger.info(tname + " 开始迁移")
+                    new_torr_path=torrDonePath+tobj.name
+                    f=filepath+os.path.sep+tname
+                    loger.debug("迁移下载文件 " + f+'至\n'+finishFilePath)
+                    shutil.move(f,finishFilePath)
+                    tpath= str(Path(tobj._filepath))
+                    loger.debug("迁移种子文件 " +tpath + '至\n' + torrDonePath)
+                    shutil.move(tpath, torrDonePath)
+
+                    movePdf(tpath,finishFilePath)
+
+                    single_file_list.remove(tname)
+            except IndexError:
+                loger.error("tobj.files "+str(tname))
+                loger.error("single_file_list " + str(single_file_list))
+            except Exception as e:
+                loger.error(f"迁移过程中发生错误: {e}")
+    else:
+        loger.info(filepath+" 单文件列表为空")
 
 #根据种子路径生成词典  key 种子名称   val 种子路径
 #原则上不会有重复，毕竟文件名不可能重复
@@ -420,7 +649,9 @@ def scan_torr_get_hashlist(path,txt):
                 torr = os.path.join(dirpath, filename)
                 # txt.writelines("dirpath  "+dirpath+'\r\n')
                 # txt.writelines("filename  " + filename + '\r\n')
-                my_torrent = Torrent.from_file(torr)
+                my_torrent = loadTorr(torr)
+                if my_torrent is None:
+                    continue
                 hashcode=my_torrent.info_hash.lower()
                 if txt is not None:
                     txt.writelines("hashcode  " + hashcode + '\r\n')
@@ -439,7 +670,9 @@ def findTorrentByHashcode(srctorrpath,tartorrpath):
             portion = os.path.splitext(filename)
             if portion[1] == ".torrent":
                 srctorrpath = os.path.join(dirpath, filename)
-                srctorrent = Torrent.from_file(srctorrpath)
+                srctorrent = loadTorr(srctorrpath)
+                if srctorrent is None:
+                    continue
                 srccode=srctorrent.info_hash.lower()
                 if srccode in tarlist:
                     txt.writelines("hashcode  " + srccode + '\r\n')
@@ -449,26 +682,80 @@ def findTorrentByHashcode(srctorrpath,tartorrpath):
 
     txt.close()
 
+# 根据文件路径，获取该文件夹下的，种子code及其对应列表
+# def query_torr_dir_dict_byDir(dirpath):
+#     torr_dir_dict={}
+#     for dirpath, dirnames, filenames in os.walk(dirpath):
+#         for filename in filenames:
+#             portion = os.path.splitext(filename)
+#             if portion[1] == ".torrent":
+#                 torr = os.path.join(dirpath, filename)
+#                 # txt.writelines("dirpath  "+dirpath+'\r\n')
+#                 # txt.writelines("filename  " + filename + '\r\n')
+#                 my_torrent = loadTorr(torr)
+#                 if my_torrent is None:
+#                     continue
+#                 hashcode=my_torrent.info_hash.lower()
+#                 torr_dir_dict[hashcode]=dirpath
+#
+#     loger.debug('待处理文件夹个数' + str(len(torr_dir_dict)))
+#     return torr_dir_dict
+
+
+# 根据文件路径，获取该文件夹下的，种子code及其对应列表
+#dirpath扫描路径
+#skiptag是否跳过指定文件夹
+#指定文件夹名称
+def query_torr_dir_dict_byDir(dirpath,skipTag,dname):
+    torr_dir_dict={}
+    dir_torrent_count = defaultdict(int)
+    # 先统计每个目录的torrent文件数量
+    for root, dirs, files in os.walk(dirpath):
+        if skipTag and dname in dirs:
+            dirs.remove(dname)
+        torrent_count = sum(1 for f in files if f.endswith('.torrent'))
+        dir_torrent_count[root] = torrent_count
+    # 再次遍历，只处理只有一个torrent文件的目录
+    for   root, dirnames, filenames in os.walk(dirpath):
+        if skipTag and dname in dirnames:
+            dirnames.remove(dname)
+        if dir_torrent_count[root] != 1:
+            continue
+        for filename in filenames:
+            if filename.endswith('.torrent'):
+                torr = os.path.join(root, filename)
+                # txt.writelines("dirpath  "+dirpath+'\r\n')
+                # txt.writelines("filename  " + filename + '\r\n')
+                my_torrent = loadTorr(torr)
+                if my_torrent is None:
+                    continue
+                hashcode=my_torrent.info_hash.lower()
+                torr_dir_dict[hashcode]=root
+
+    loger.debug('待处理文件夹个数' + str(len(torr_dir_dict)))
+    return torr_dir_dict
+
 #srctorrpath  种子集散地
 # tartorrpath  待查找种子
 def findTorrentByHashcodeInDir(srctorrpath,tartorrpath):
     txt = log(tartorrpath, 'findTorrentByHashcodeInDir',False)
-    tarlist=[]
+    torr_dir_dict=query_torr_dir_dict_byDir(tartorrpath,False,None)
+    tarlist=torr_dir_dict.keys()
     #遍历待查找的种子，生成集合
     txt.writelines("************************待查找************  " + '\r\n')
-    for dirpath, dirnames, filenames in os.walk(tartorrpath):
-        for filename in filenames:
-            portion = os.path.splitext(filename)
-            if portion[1] == ".torrent":
-                torr = os.path.join(dirpath, filename)
-                # txt.writelines("dirpath  "+dirpath+'\r\n')
-                # txt.writelines("filename  " + filename + '\r\n')
-                my_torrent = Torrent.from_file(torr)
-                hashcode=my_torrent.info_hash.lower()
-                txt.writelines("torr  " + torr + '\r\n')
-                txt.writelines("hashcode  " + hashcode + '\r\n')
-                tarlist.append(hashcode)
-    txt.writelines("************************待查找************  " + '\r\n')
+    # for dirpath, dirnames, filenames in os.walk(tartorrpath):
+    #     for filename in filenames:
+    #         portion = os.path.splitext(filename)
+    #         if portion[1] == ".torrent":
+    #             torr = os.path.join(dirpath, filename)
+    #             # txt.writelines("dirpath  "+dirpath+'\r\n')
+    #             # txt.writelines("filename  " + filename + '\r\n')
+    #             my_torrent = Torrent.from_file(torr)
+    #             hashcode=my_torrent.info_hash.lower()
+    #             txt.writelines("torr  " + torr + '\r\n')
+    #             txt.writelines("hashcode  " + hashcode + '\r\n')
+    #             tarlist.append(hashcode)
+    # txt.writelines("************************待查找************  " + '\r\n')
 
     for dirpath, dirnames, filenames in os.walk(srctorrpath):
         for filename in filenames:
@@ -476,7 +763,7 @@ def findTorrentByHashcodeInDir(srctorrpath,tartorrpath):
             if portion[1] == ".torrent":
                 srctorrpath = os.path.join(dirpath, filename)
                 try:
-                    srctorrent = Torrent.from_file(srctorrpath)
+                    srctorrent = loadTorr(srctorrpath)
                     srccode = srctorrent.info_hash.lower()
                     if srccode in tarlist:
                         txt.writelines("hashcode  " + srccode + '\r\n')
@@ -571,9 +858,9 @@ def comparefiles(tfile, downdir, deltag):
     loger.debug('downdir' + downdir + '\r\n')
     loger.debug('downdir' + downdir)
     torrentmap = {}
-    my_torrent = Torrent.from_file(tfile)
-
-
+    my_torrent = loadTorr(tfile)
+    if my_torrent is None:
+        return
     for file in my_torrent.files:  # 遍历种子文件
         ## 种子内容格式 TorrentFile(name='359\\\尖叫视频.mht', length=325117)
         tfilename = file.name.replace('\\\\', os.path.sep)
@@ -601,10 +888,6 @@ def comparefiles(tfile, downdir, deltag):
                 loger.debug("subpath :" + subpath)
                 torrentmap.setdefault(subpath, file.length)
         ## 待增加过滤无用文件实现
-
-
-
-
     downloadmap=scanDownloadingFiles(downdir, deltag)
     m=1024*1024
 
@@ -663,7 +946,347 @@ def getUndownFileList(tfiles,downedfiles):
     return  tmap.values()
 
 if __name__ == '__main__':
-    getTorrDetail('D:\\360Downloads\\1228\\')
+    # getTorrDetail('D:\\360Downloads\\1228\\')
+    filterDownFilesV2(r'D:\temp\112\tttt', r'D:\temp\112', 'y')
+    os._exit(0)
+    countHalfFiles(r'D:\temp\112\y',False)
+
+    # clearXunleiFile("D:\\temp\\")
+    # findTorrentByHashcodeInDir(r"D:\temp\0555\2022-03-01",r"D:\temp\0555\tttt")
+
+    # test()
+    # clearXunleiFile(r'G:\down\0555\others\half')
+    # clearXunleiFile(r'F:\down\0555\b16')
+    # clearXunleiFile(r'G:\down\0555\b51')
+    # countHalfFiles(r'F:\down\0555\b39\un\y', False)
+    # filterDownFiles(r'C:\torrent\2022-03-01\0555\b51',
+    #                r'g:\down\0555\b51\un', 'y')
+    # getTorrDetail(r'F:\down\0555\b54\un\y\ssss')
+    # os._exit(0)
+    # countHalfFiles(r'g:\down\0555\b51\un\y', False)
+
+    # filterDownFiles(r'C:\torrent\2022-03-01\0555\b38',
+    #                r'g:\down\0555\b38\un', 'y')
+
+    # countHalfFiles(r'g:\down\0555\b38\un\y', False)
+    # os._exit(0)
+    # loger.info('C5AEA8F99A520790D421FEB7162DDF7A77BD297B'.lower())
+    # strlist=['爱剪辑-48.avi']
+    # findTorrListByStr(strlist,'D:\\temp\\0555\\2022-03-01\\0555\\')
+    # findTorrListByStr(strlist, 'D:\\temp\\0555\\2022-03-01\\0555\\b20\errfiles\\')
+    # countHalfFiles(r'F:\down\1102\un\y', False)
+    # countHalfFiles(r'F:\down\0555\b16\half', True)
+
+    # countHalfFiles(r'G:\down\1102', False)
+    # countHalfFiles(r'F:\down\0555\b54\un\y\ssss', False)
+    # countHalfFiles(r'F:\down\0555\b54\un\y\3333', False)
+    filterDownFilesV2(r'C:\torrent\2022-03-01\0555\b58',
+                      r'F:\down\0555\b58\un', 'y')
+
+    countHalfFiles(r'F:\down\0555\b58\un\y', False)
+    os._exit(0)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b55',
+                    r'g:\down\0555\b55\un', 'y')
+
+    countHalfFiles(r'g:\down\0555\b55\un\y', False)
+    filterDownFiles(r'C:\torrent\2022-03-01\0322\other',
+                    r'G:\down\0322\other\un', 'y')
+    countHalfFiles(r'G:\down\0322\other\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\1127\1',
+                    r'F:\down\1127\1\un', 'y')
+    countHalfFiles(r'F:\down\1127\1\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\1127\2',
+                    r'F:\down\1127\2\un', 'y')
+    countHalfFiles(r'F:\down\1127\2\un\y', False)
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b40',
+                    r'f:\down\0555\b40\un', 'y')
+
+    countHalfFiles(r'f:\down\0555\b40\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b54',
+                    r'f:\down\0555\b54\un', 'y')
+
+    countHalfFiles(r'f:\down\0555\b54\un\y', False)
+    os._exit(0)
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b16',
+                    r'f:\down\0555\b16\un', 'y')
+
+    countHalfFiles(r'f:\down\0555\b16\un\y', False)
+    filterDownFiles(r'C:\torrent\2022-03-01\0333\other',
+                    r'G:\down\0333\other\un', 'y')
+    countHalfFiles(r'G:\down\0333\other\un\y', False)
+    filterDownFiles(r'C:\torrent\2022-03-01\43',
+                    r'G:\down\43\un', 'y')
+    countHalfFiles(r'G:\down\43\un\y', False)
+    filterDownFiles(r'C:\torrent\2022-03-01\14',
+                    r'G:\down\14\un', 'y')
+
+    countHalfFiles(r'G:\down\14\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b36',
+                    r'G:\down\0555\b36\un', 'y')
+
+    countHalfFiles(r'G:\down\0555\b36\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b51',
+                    r'g:\down\0555\b51\un', 'y')
+    countHalfFiles(r'g:\down\0555\b51\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b54',
+                    r'f:\down\0555\b54\un', 'y')
+
+    countHalfFiles(r'f:\down\0555\b54\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0322\other',
+                    r'G:\down\0333\other\un', 'y')
+    countHalfFiles(r'G:\down\0333\other\un\y', False)
+    filterDownFiles(r'C:\torrent\2022-03-01\0333\other',
+                    r'G:\down\0333\other\un', 'y')
+    countHalfFiles(r'G:\down\0333\other\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0333\best',
+                    r'G:\down\0333\best\un', 'y')
+    countHalfFiles(r'G:\down\0333\best\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0333\1',
+                    r'G:\down\0333\1\un', 'y')
+    countHalfFiles(r'G:\down\0333\1\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\33',
+                    r'G:\down\33\un', 'y')
+
+    countHalfFiles(r'G:\down\33\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0333\1',
+                    r'G:\down\0333\1\un', 'y')
+    countHalfFiles(r'G:\down\0333\1\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\26',
+                    r'G:\down\26\un', 'y')
+    countHalfFiles(r'G:\down\26\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\others',
+                    r'f:\down\0555\other\un', 'y')
+    countHalfFiles(r'f:\down\0555\other\un\y', False)
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\others',
+                    r'g:\down\0555\others\un', 'y')
+    countHalfFiles(r'g:\down\0555\others\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\1201\02',
+                    r'e:\down\1201\02\un', 'y')
+    countHalfFiles(r'e:\down\1201\02\un\y', False)
+
+    os._exit(0)
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b51',
+                    r'g:\down\0555\b51\un', 'y')
+
+    # countHalfFiles(r'g:\down\0555\b51\un\y', False)
+    countHalfFiles(r'G:\down\0555\b51\un\needscan', False)
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b43', r'g:\down\0555\b43\un', 'y')
+
+    countHalfFiles(r'g:\down\0555\b43\un\y', False)
+
+    # filterDownFiles(r'C:\torrent\2022-03-01\0555\b44', r'g:\down\0555\b44\un', 'y')
+
+    # countHalfFiles(r'g:\down\0555\b44\un\y', False)
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b39',
+                    r'f:\down\0555\b39\un', 'y')
+
+    countHalfFiles(r'f:\down\0555\b39\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b40',
+                    r'f:\down\0555\b40\un', 'y')
+
+    countHalfFiles(r'f:\down\0555\b40\un\y', False)
+    os._exit(0)
+
+    countHalfFiles(r'G:\down\0555\others\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b38',
+                    r'g:\down\0555\b38\un', 'y')
+
+    countHalfFiles(r'g:\down\0555\b40\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b40',
+                    r'f:\down\0555\b40\un', 'y')
+
+    countHalfFiles(r'f:\down\0555\b40\un\y', False)
+    filterDownFiles(r'C:\torrent\2022-03-01\1201\02',
+                    r'e:\down\1201\02\un', 'y')
+    countHalfFiles(r'e:\down\1201\02\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\1201\01',
+                    r'd:\down\1201\01\un', 'y')
+    countHalfFiles(r'd:\down\1201\01\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\1112',
+                    r'f:\down\1112\un', 'y')
+    countHalfFiles(r'f:\down\1112\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b42',
+                    r'f:\down\0555\b42\un', 'y')
+
+    countHalfFiles(r'f:\down\0555\b42\un\y', False)
+
+    os._exit(0)
+    filterDownFiles(r'C:\torrent\2022-03-01\1102',
+                    r'F:\down\1102\un', 'y')
+    countHalfFiles(r'F:\down\1102\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\1201\02',
+                    r'e:\down\1201\02\un', 'y')
+    countHalfFiles(r'e:\down\1201\02\un\y', True)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b42',
+                    r'f:\down\0555\b42\un', 'y')
+    countHalfFiles(r'f:\down\0555\b42\un\y', False)
+
+    # filterDownFiles(r'C:\torrent\2022-03-01\0555\b31',
+    #               r'G:\down\0555\b31\un', 'y')
+    filterDownFiles(r'C:\torrent\2022-03-01\1201\01',
+                    r'D:\down\1201\01\un', 'y')
+    countHalfFiles(r'D:\down\1201\01\un\y', True)
+    filterDownFiles(r'C:\torrent\2022-03-01\1201\02',
+                    r'e:\down\1201\02\un', 'y')
+    countHalfFiles(r'e:\down\1201\02\un\y', True)
+
+    # countHalfFiles(r'G:\down\0322\HJ\half', True)
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b43',
+                    r'G:\down\0555\b43\un', 'y')
+    countHalfFiles(r'F:\down\0555\b40\un\y', False)
+
+    countHalfFiles(r'G:\down\0555\b43\half\half', True)
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b41',
+                    r'G:\down\0555\b41\un', 'y')
+
+    countHalfFiles(r'G:\down\0555\b41\un\y', False)
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b41',
+                    r'f:\down\0555\b41\un', 'y')
+
+    countHalfFiles(r'f:\down\0555\b41\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b41',
+                    r'F:\down\0555\b41\un', 'y')
+
+    countHalfFiles(r'F:\down\0555\b41\half', True)
+
+    countHalfFiles(r'G:\down\0555\b31\half', True)
+    countHalfFiles(r'G:\down\0555\b37\half', True)
+    countHalfFiles(r'G:\down\0555\b38\half', True)
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b41',
+                    r'F:\down\0555\b41\un', 'y')
+    countHalfFiles(r'F:\down\0555\b41\un\y', False)
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b41',
+                    r'G:\down\0555\b41\un', 'y')
+    countHalfFiles(r'G:\down\0555\b41\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b41',
+                    r'G:\down\0555\b41\half', 'half')
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b31',
+                    r'G:\down\0555\b31\half', 'half')
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b37',
+                    r'G:\down\0555\b37\half', 'half')
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b38',
+                    r'G:\down\0555\b38\half', 'half')
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b38',
+                    r'G:\down\0555\b38\un', 'y')
+    countHalfFiles(r'G:\down\0555\b38\un\y', False)
+
+    countHalfFiles(r'G:\down\0555\b38\un\y', False)
+
+    filterDownFiles(r'C:\torrent\2022-03-01\0555\b43',
+                    r'G:\down\0555\b43f\un', 'y')
+
+    countHalfFiles(r'G:\down\0555\b43f\un\y\161', False)
+    # getTorrDetail(r'D:\temp\0555\2022-03-01\0555\b38')
+    os._exit(0)
+    # scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\b30\\")
+    # os._exit(0)
+
+    filterDownFiles(r'D:\t7\2022-03-01\0555\b31', r'G:\down\0555\b31\un', 'y')
+    # filterDownFiles(r'D:\t7\2022-03-01\0555\b32', r'G:\down\0555\b32\un', 'y')
+    # filterDownFiles(r'D:\t7\2022-03-01\0555\b33', r'G:\down\0555\b33\un', 'y')
+    filterDownFiles(r'D:\t7\2022-03-01\0555\b34', r'G:\down\0555\b34\un', 'y')
     filterDownFiles(r'D:\t7\2022-03-01\0555\b35', r'G:\down\0555\b35\un', 'y')
-    clearXunleiFile("D:\\temp\\")
-    findTorrentByHashcodeInDir(r"D:\temp\0555\2022-03-01",r"D:\temp\0555\tttt")
+    filterDownFiles(r'D:\t7\2022-03-01\0555\b36', r'G:\down\0555\b36\un', 'y')
+    filterDownFiles(r'D:\t7\2022-03-01\0555\b37', r'G:\down\0555\b37\un', 'y')
+    os._exit(0)
+    countHalfFiles(r'D:\temp\112\2', False)
+    os._exit(0)
+    getTorrDetail(r'D:\temp\0555\2022-03-01\0555\b38')
+    # scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\b30\\")
+    # os._exit(0)
+
+    filterDownFiles(r'D:\t7\2022-03-01\0555\b31', r'G:\down\0555\b31\un', 'y')
+    # filterDownFiles(r'D:\t7\2022-03-01\0555\b32', r'G:\down\0555\b32\un', 'y')
+    # filterDownFiles(r'D:\t7\2022-03-01\0555\b33', r'G:\down\0555\b33\un', 'y')
+    filterDownFiles(r'D:\t7\2022-03-01\0555\b34', r'G:\down\0555\b34\un', 'y')
+    filterDownFiles(r'D:\t7\2022-03-01\0555\b35', r'G:\down\0555\b35\un', 'y')
+    filterDownFiles(r'D:\t7\2022-03-01\0555\b36', r'G:\down\0555\b36\un', 'y')
+    filterDownFiles(r'D:\t7\2022-03-01\0555\b37', r'G:\down\0555\b37\un', 'y')
+    os._exit(0)
+
+    # findTorrentByHashcodeInDir("D:\\temp\\0555\\2022-03-01\\","D:\\temp\\backup\\find\\")
+    # scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\b25\\")
+    # scanTorrentsIntoDB("D:\\temp\\0555\\2022-03-01\\0555\\normal\\")
+
+    # genhalfTorrent('D:\\temp\\chachong\\')
+    # filterDownFiles(r'D:\temp\b31', r'D:\temp\sp', 'y')
+    # writeTorrDetail('D:\\360Downloads\\1228\\')
+    os._exit(0)
+
+    #
+    path = r'D:\temp\0555\2022-03-01\0555\b43'
+    # path=r'D:\temp\b31y'
+    # removeFiles(path)
+    # truncatetable()
+    # scanTorrentsIntoDB(path)
+
+    # removeFiles('f:\\')
+    # removeFiles('g:\\')
+    # removeFiles('h:\\')
+
+# removeFiles('E:\\PDF\\')
+# removeFiles('G:\\CC\\BOOKS\\')
+
+# scanTorrentsIntoDB("C:\\Users\\Administrator\\Downloads\\best\\")
+
+# scanTorrentsIntoDB("D:\\temp\\0555\\t\\0555\\b37\\")
+# tormd5("C:\\Users\\Administrator\\Downloads\\best\\推特网红大屁股骚货kbamspbam，怀孕了还能挺着个大肚子拍照拍视频挣钱，太敬业了，奶头变黑 但白虎粉穴依然粉嫩.torrent")
+#
+# getDulicateFiles()
+
+
+# getTorrDetail('D:\\360Downloads\\1228\\')
+# writeTorrDetail('D:\\temp\\1228\\')
+# filterBigfiles('D:\\360Downloads\\test\\', 1000)
+
+# getTorrDetail('D:\\temp\\593254315050521\\1210-best\\1\\')
+
+# getTorrentByDetails('','D:\\temp\\0555\\2022-03-01\\0555\\')
+
+# for i in range(51):
+#     dirpath='D:\\temp\\593254315050521\\alltorr\\'+str(i)+os.path.sep+str(i)+'\\y'
+#     if(os.path.isdir(dirpath)):
+#         # loger.info('D is '+dirpath)
+#         getTorrentByDetails('给哥哥买了新工具',dirpath )
+
+# # Reading and modifying an existing file.
+# my_torrent = Torrent.from_file('/home/idle/some.torrent')
+# my_torrent.total_size  # Total files size in bytes.
+# my_torrent.magnet_link  # Magnet link for you.
+# my_torrent.comment = 'Your torrents are mine.'  # Set a comment.
+# my_torrent.to_file()  # Save changes.
+#
+# # Or we can create a new torrent from a directory.
+# new_torrent = Torrent.create_from('/home/idle/my_stuff/')  # or it could have been a single file
+# new_torrent.announce_urls = 'udp://tracker.openbittorrent.com:80'
+# new_torrent.to_file('/home/idle/another.torrent')
+#
+# with open('D:\\temp\\test.txt') as f:
+#     for line in f.readlines()  :##readlines(),函数把所有的行都读取进来；
+#         urk = line.strip(  )##删除行后的换行符，img_file 就是每行的内容啦
+
